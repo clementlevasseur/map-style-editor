@@ -352,6 +352,36 @@ button {
   padding: 1px 5px;
   border-radius: 4px;
 }
+.label-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.info-icon {
+  color: var(--text-faint);
+  font-size: 12.5px;
+  line-height: 1;
+  cursor: help;
+  opacity: 0.7;
+  transition: color 0.12s, opacity 0.12s;
+}
+.info-icon:hover {
+  color: var(--accent);
+  opacity: 1;
+}
+.doc-link {
+  color: var(--text-faint);
+  text-decoration: none;
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0.65;
+  transition: color 0.12s, opacity 0.12s;
+}
+.doc-link:hover {
+  color: var(--accent);
+  opacity: 1;
+}
 .prop-grid {
   display: flex;
   gap: 8px;

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { PropDef } from "../lib/specMeta";
+import { ExternalLinkIcon, InfoIcon } from "./icons";
 
 interface Props {
   def: PropDef;
@@ -113,9 +114,25 @@ export default function PropertyControl({ def, value, onChange }: Props) {
 
   return (
     <div className="prop">
-      <div className="prop__label" title={def.doc}>
+      <div className="prop__label">
         <span>{def.name}</span>
         {isExpr && <span className="fn">ƒ expr</span>}
+        <span className="label-actions">
+          {def.doc && (
+            <span className="info-icon" title={def.doc}>
+              <InfoIcon />
+            </span>
+          )}
+          <a
+            className="doc-link"
+            href={`https://maplibre.org/maplibre-style-spec/layers/#${def.name}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open MapLibre docs"
+          >
+            <ExternalLinkIcon />
+          </a>
+        </span>
       </div>
       {control}
     </div>

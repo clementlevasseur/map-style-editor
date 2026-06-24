@@ -1,10 +1,12 @@
 // Reads MapLibre's official style *reference* to drive the form-based UI editor:
 // which paint/layout properties exist for a layer type, their control kind,
 // allowed enum values, defaults and numeric bounds.
-import { v8 } from "@maplibre/maplibre-gl-style-spec";
+// Use the JSON reference (not the `v8` JS export) — the JS build strips the `doc`
+// strings we surface as inline help. The JSON keeps doc / minimum / maximum / values.
+import specJson from "@maplibre/maplibre-gl-style-spec/dist/latest.json";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const spec = v8 as any;
+const spec = specJson as any;
 
 export interface PropDef {
   name: string;

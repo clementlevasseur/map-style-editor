@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
 import { layoutProps, paintProps, type PropDef } from "../lib/specMeta";
 import PropertyControl from "./PropertyControl";
+import { ExternalLinkIcon, InfoIcon } from "./icons";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -43,6 +44,26 @@ export default function UiEditor({ style, onChange }: Props) {
       .map((l, i) => ({ l, i }))
       .filter(({ l }) => !q || String(l.id).toLowerCase().includes(q) || String(l.type).includes(q));
   }, [layers, filter]);
+
+  // Source helpers for the "General" section.
+  const sources = (style?.sources ?? {}) as Record<string, any>;
+  const sourceNames = Object.keys(sources);
+  const currentSourceType = layer?.source ? sources[layer.source]?.type : undefined;
+  // source-layer only applies to vector tilesets (or unknown/missing sources).
+  const showSourceLayer =
+    layer && layer.type !== "background" && (currentSourceType === "vector" || currentSourceType === undefined);
+  // Suggest source-layer values already used by sibling layers on the same source.
+  const siblingSourceLayers = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          layers
+            .filter((l) => l.source === layer?.source && l["source-layer"])
+            .map((l) => l["source-layer"] as string),
+        ),
+      ),
+    [layers, layer?.source],
+  );
 
   if (!style) {
     return (
@@ -141,22 +162,50 @@ export default function UiEditor({ style, onChange }: Props) {
             </div>
 
             <Section title="General">
-              <Field label="source">
-                <input
-                  className="input"
-                  value={layer.source ?? ""}
-                  onChange={(e) => updateField("source", e.target.value)}
-                />
-              </Field>
-              <Field label="source-layer">
-                <input
-                  className="input"
-                  value={layer["source-layer"] ?? ""}
-                  onChange={(e) => updateField("source-layer", e.target.value)}
-                />
-              </Field>
+              {layer.type !== "background" && (
+                <Field
+                  label="source"
+                  doc="source"
+                  help="The dataset this layer draws from — one of the style's sources."
+                >
+                  <select
+                    className="select"
+                    value={layer.source ?? ""}
+                    onChange={(e) => updateField("source", e.target.value || undefined)}
+                  >
+                    <option value="">(none)</option>
+                    {sourceNames.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                    {layer.source && !sourceNames.includes(layer.source) && (
+                      <option value={layer.source}>{layer.source} (missing)</option>
+                    )}
+                  </select>
+                </Field>
+              )}
+              {showSourceLayer && (
+                <Field
+                  label="source-layer"
+                  doc="source-layer"
+                  help="For vector tilesets: which layer inside the tileset to render (e.g. water, roads, building)."
+                >
+                  <input
+                    className="input"
+                    list={`sl-${idx}`}
+                    value={layer["source-layer"] ?? ""}
+                    onChange={(e) => updateField("source-layer", e.target.value)}
+                  />
+                  <datalist id={`sl-${idx}`}>
+                    {siblingSourceLayers.map((v) => (
+                      <option key={v} value={v} />
+                    ))}
+                  </datalist>
+                </Field>
+              )}
               <div className="prop-grid">
-                <Field label="minzoom">
+                <Field label="minzoom" doc="minzoom" help="The layer is hidden below this zoom level.">
                   <input
                     type="number"
                     className="input"
@@ -168,7 +217,7 @@ export default function UiEditor({ style, onChange }: Props) {
                     }
                   />
                 </Field>
-                <Field label="maxzoom">
+                <Field label="maxzoom" doc="maxzoom" help="The layer is hidden at and above this zoom level.">
                   <input
                     type="number"
                     className="input"
@@ -233,10 +282,44 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+const DOC_BASE = "https://maplibre.org/maplibre-style-spec/layers/#";
+
+function Field({
+  label,
+  help,
+  doc,
+  children,
+}: {
+  label: string;
+  /** Tooltip text shown on the info icon. */
+  help?: string;
+  /** Anchor on the MapLibre layers spec page (e.g. "source-layer"). */
+  doc?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="prop">
-      <div className="prop__label">{label}</div>
+      <div className="prop__label">
+        <span>{label}</span>
+        <span className="label-actions">
+          {help && (
+            <span className="info-icon" title={help}>
+              <InfoIcon />
+            </span>
+          )}
+          {doc && (
+            <a
+              className="doc-link"
+              href={DOC_BASE + doc}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open MapLibre docs"
+            >
+              <ExternalLinkIcon />
+            </a>
+          )}
+        </span>
+      </div>
       {children}
     </div>
   );

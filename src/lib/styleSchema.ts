@@ -5,10 +5,12 @@
 // Note: values are intentionally left permissive (expressions/functions are
 // valid anywhere data-driven), so this schema is used for COMPLETION/HOVER only.
 // Authoritative error checking is done separately by `validateStyleMin`.
-import { v8 } from "@maplibre/maplibre-gl-style-spec";
+// Use the JSON reference (not the `v8` JS export) so schema descriptions keep the
+// `doc` strings — the JS build strips them.
+import specJson from "@maplibre/maplibre-gl-style-spec/dist/latest.json";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const spec = v8 as any;
+const spec = specJson as any;
 
 function enumValues(def: any): string[] | null {
   if (def?.type === "enum" && def.values) {
