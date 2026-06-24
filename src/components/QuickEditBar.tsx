@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
 import { runQuickEdit } from "../lib/quickEdit";
+import { useDismiss } from "../lib/useDismiss";
 import BrandPanel from "./BrandPanel";
 
 interface Props {
@@ -38,6 +39,8 @@ export default function QuickEditBar({ style, onChange, contrastLow }: Props) {
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [panel, setPanel] = useState<PanelKind>("none");
   const inputRef = useRef<HTMLInputElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useDismiss(wrapRef, panel !== "none", () => setPanel("none"));
 
   const toggle = (k: PanelKind) => setPanel((p) => (p === k ? "none" : k));
 
@@ -66,7 +69,7 @@ export default function QuickEditBar({ style, onChange, contrastLow }: Props) {
   }
 
   return (
-    <div className="quickedit-wrap">
+    <div className="quickedit-wrap" ref={wrapRef}>
       <div className="quickedit">
         <span className="quickedit__label">Quick edit</span>
         <input

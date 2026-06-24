@@ -123,16 +123,20 @@ function adjustRole(layers: any[], role: RoleKey, dl: number, ds: number): numbe
   return count;
 }
 
-/** Read the current color of a role (first matching layer), if it is a plain string. */
+/** Read the most representative color of a role (most frequent plain-string value). */
 export function readRoleColor(layers: any[], role: RoleKey): string | undefined {
+  const counts = new Map<string, number>();
   for (const l of layers) {
     if (!matchLayer(role, l)) continue;
     if (role === "roads" && /(casing|outline)/.test(lid(l))) continue;
     const prop = role === "labels" ? "text-color" : COLOR_PROP[l.type];
-    const v = l.paint?.[prop];
-    if (typeof v === "string") return v;
+    const v = prop && l.paint?.[prop];
+    if (typeof v === "string") counts.set(v, (counts.get(v) ?? 0) + 1);
   }
-  return undefined;
+  let best: string | undefined;
+  let max = 0;
+  for (const [c, n] of counts) if (n > max) { max = n; best = c; }
+  return best;
 }
 
 export function runQuickEdit(style: StyleSpecification, raw: string): QuickEditResult {

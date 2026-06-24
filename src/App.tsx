@@ -1,12 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import Toolbar from "./components/Toolbar";
-import StyleEditor from "./components/StyleEditor";
 import UiEditor from "./components/UiEditor";
 import ImagesPanel from "./components/ImagesPanel";
 import MapPreview from "./components/MapPreview";
 import QuickEditBar from "./components/QuickEditBar";
+import Toaster from "./components/Toaster";
+
+// Monaco is heavy and bundled locally — load the JSON editor on demand.
+const StyleEditor = lazy(() => import("./components/StyleEditor"));
 import { clearSavedStyle, loadSavedStyle, saveStyle } from "./lib/persistence";
 import { fetchStyleText } from "./lib/styleLoader";
 import { DEFAULT_STYLE_URL, FALLBACK_STYLE } from "./lib/defaultStyle";
@@ -20,9 +23,28 @@ export default function App() {
   const [text, setText] = useState<string>("");
   const [parsedStyle, setParsedStyle] = useState<StyleSpecification | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"ui" | "json" | "images">("ui");
+  const [tab, setTab] = useState<"ui" | "json" | "images">(
+    () => (localStorage.getItem("map-style-editor:tab") as "ui" | "json" | "images") || "ui",
+  );
   const [past, setPast] = useState<string[]>([]);
   const [future, setFuture] = useState<string[]>([]);
+  const [vertical, setVertical] = useState(() => window.innerWidth < 820);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("map-style-editor:tab", tab);
+    } catch {
+      /* ignore */
+    }
+  }, [tab]);
+
+  // Stack editor/map vertically on narrow screens.
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 820px)");
+    const handler = () => setVertical(mq.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   // Initial load: shared link (#s=) > saved work > default remote style > fallback.
   useEffect(() => {
@@ -141,7 +163,7 @@ export default function App() {
       />
       <QuickEditBar style={parsedStyle} onChange={handleStyleObjectChange} contrastLow={!!contrast?.low} />
       <div style={{ flex: 1, minHeight: 0 }}>
-        <PanelGroup direction="horizontal">
+        <PanelGroup direction={vertical ? "vertical" : "horizontal"}>
           <Panel defaultSize={42} minSize={20}>
             <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
               <div className="tabs">
@@ -157,17 +179,22 @@ export default function App() {
               </div>
               <div style={{ flex: 1, minHeight: 0 }}>
                 {tab === "ui" && <UiEditor style={parsedStyle} onChange={handleStyleObjectChange} />}
-                {tab === "json" && <StyleEditor value={text} onChange={setText} error={error} />}
+                {tab === "json" && (
+                  <Suspense fallback={<div className="empty-note">Loading editor…</div>}>
+                    <StyleEditor value={text} onChange={setText} error={error} />
+                  </Suspense>
+                )}
                 {tab === "images" && <ImagesPanel style={parsedStyle} onChange={handleStyleObjectChange} />}
               </div>
             </div>
           </Panel>
-          <PanelResizeHandle className="resize-handle" />
+          <PanelResizeHandle className={"resize-handle " + (vertical ? "resize-handle--h" : "resize-handle--v")} />
           <Panel minSize={20}>
             <MapPreview style={parsedStyle} />
           </Panel>
         </PanelGroup>
       </div>
+      <Toaster />
     </div>
   );
 }

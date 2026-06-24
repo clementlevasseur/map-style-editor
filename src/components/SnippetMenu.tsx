@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { SNIPPETS, STYLE_URL_PLACEHOLDER } from "../lib/snippets";
 import { CodeIcon } from "./icons";
+import { useDismiss } from "../lib/useDismiss";
 
 export default function SnippetMenu() {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState(STYLE_URL_PLACEHOLDER);
   const [copied, setCopied] = useState<string | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  useDismiss(ref, open, () => setOpen(false));
 
   async function copy(id: string, code: string) {
     try {
@@ -18,7 +21,7 @@ export default function SnippetMenu() {
   }
 
   return (
-    <div className="menu">
+    <div className="menu" ref={ref}>
       <button
         className={"btn" + (open ? " btn--primary" : "")}
         onClick={() => setOpen((o) => !o)}

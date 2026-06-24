@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { deleteSaved, listSaved, saveStyleNamed, type SavedStyle } from "../lib/savedStyles";
+import { useDismiss } from "../lib/useDismiss";
 
 interface Props {
   currentText: string;
@@ -10,6 +11,8 @@ export default function SavedMenu({ currentText, onLoad }: Props) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [items, setItems] = useState<SavedStyle[]>(() => listSaved());
+  const ref = useRef<HTMLDivElement>(null);
+  useDismiss(ref, open, () => setOpen(false));
 
   function refresh() {
     setItems(listSaved());
@@ -23,7 +26,7 @@ export default function SavedMenu({ currentText, onLoad }: Props) {
   }
 
   return (
-    <div className="menu">
+    <div className="menu" ref={ref}>
       <button
         className={"btn" + (open ? " btn--primary" : "")}
         onClick={() => { if (!open) refresh(); setOpen((o) => !o); }}

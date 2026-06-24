@@ -6,6 +6,7 @@ import { getImages } from "../lib/styleImages";
 import { buildSprite, downloadBlob } from "../lib/sprite";
 import { createZip } from "../lib/zip";
 import { buildShareUrl } from "../lib/share";
+import { toast } from "../lib/toast";
 import Logo from "./Logo";
 import SavedMenu from "./SavedMenu";
 import SnippetMenu from "./SnippetMenu";
@@ -33,9 +34,10 @@ export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, 
     try {
       onLoad(await fetchStyleText(url));
     } catch (e) {
-      alert(
-        `Failed to load the URL.\n${e instanceof Error ? e.message : e}\n\n` +
-          "Common cause: the style/tile server does not allow CORS.",
+      toast(
+        `Failed to load the URL: ${e instanceof Error ? e.message : e}. ` +
+          "The style/tile server may not allow CORS.",
+        "error",
       );
     } finally {
       setBusy(false);
@@ -54,7 +56,7 @@ export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, 
     try {
       onLoad(await fetchStyleText(tpl.url!));
     } catch (err) {
-      alert(`Failed to load the template.\n${err instanceof Error ? err.message : err}`);
+      toast(`Failed to load the template: ${err instanceof Error ? err.message : err}`, "error");
     } finally {
       setBusy(false);
     }
@@ -96,13 +98,13 @@ export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, 
       const note = strippedImages ? "\n\nNote: images aren't included in the link — use Export for those." : "";
       try {
         await navigator.clipboard.writeText(link);
-        alert("Share link copied to clipboard." + note);
+        toast("Share link copied to clipboard." + note, "success");
       } catch {
         // Clipboard blocked (permissions / non-secure context) — offer manual copy.
         prompt("Copy this share link:" + note, link);
       }
     } catch (e) {
-      alert(`Could not create a share link.\n${e instanceof Error ? e.message : e}`);
+      toast(`Could not create a share link: ${e instanceof Error ? e.message : e}`, "error");
     } finally {
       setBusy(false);
     }
@@ -114,7 +116,7 @@ export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, 
     try {
       onLoad(await readFileText(file));
     } catch (err) {
-      alert(`Failed to read the file.\n${err instanceof Error ? err.message : err}`);
+      toast(`Failed to read the file: ${err instanceof Error ? err.message : err}`, "error");
     } finally {
       e.target.value = "";
     }

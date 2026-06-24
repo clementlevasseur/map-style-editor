@@ -6,4 +6,11 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   base: process.env.BASE_PATH ?? "/map-style-editor/",
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: { maplibre: ["maplibre-gl"] },
+      },
+    },
+  },
 });

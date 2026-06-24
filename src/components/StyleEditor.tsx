@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import "../lib/monacoSetup";
 import Editor, { type Monaco } from "@monaco-editor/react";
 import type { editor as MonacoEditor } from "monaco-editor";
 import { validateStyleMin } from "@maplibre/maplibre-gl-style-spec";
@@ -19,7 +20,8 @@ export default function StyleEditor({ value, onChange, error }: StyleEditorProps
     // Register the generated MapLibre schema for autocompletion + hover docs.
     // Schema-based error reporting is disabled ("ignore") to avoid false
     // positives on expressions; authoritative errors come from validateStyleMin.
-    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (monaco.languages as any).json.jsonDefaults.setDiagnosticsOptions({
       validate: true,
       allowComments: false,
       trailingCommas: "error",

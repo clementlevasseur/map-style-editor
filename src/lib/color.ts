@@ -71,27 +71,47 @@ export function normalizeHex(c: string): string {
   return isHex(c) && c.length === 4 ? hslToHex(...hexToHsl(c)) : c;
 }
 
-/** Derive a tasteful monochromatic map palette from one brand color (light or dark). */
-export function derivePalette(base: string, dark = false): Palette {
+export type Scheme = "mono" | "analogous" | "complementary";
+
+// Per-role saturation multiplier + lightness, for light and dark variants.
+const TONES: Record<"light" | "dark", Record<PaletteRole, [number, number]>> = {
+  light: {
+    background: [0.3, 0.96],
+    land: [0.4, 0.92],
+    buildings: [0.5, 0.85],
+    water: [0.55, 0.78],
+    roads: [0.15, 0.99],
+    labels: [0.7, 0.26],
+  },
+  dark: {
+    background: [0.25, 0.1],
+    land: [0.3, 0.15],
+    buildings: [0.4, 0.22],
+    water: [0.55, 0.3],
+    roads: [0.2, 0.42],
+    labels: [0.3, 0.86],
+  },
+};
+
+/** Derive a coherent map palette from one brand color (light/dark, color scheme). */
+export function derivePalette(base: string, dark = false, scheme: Scheme = "mono"): Palette {
   const hex = isHex(base) ? base : "#3b6fe2";
   const [h, s0] = hexToHsl(hex);
-  const s = Math.max(0.12, Math.min(0.6, s0));
-  if (dark) {
-    return {
-      background: hslToHex(h, s * 0.25, 0.1),
-      land: hslToHex(h, s * 0.3, 0.15),
-      buildings: hslToHex(h, s * 0.4, 0.22),
-      water: hslToHex(h, s * 0.55, 0.3),
-      roads: hslToHex(h, s * 0.2, 0.42),
-      labels: hslToHex(h, s * 0.3, 0.86),
-    };
-  }
-  return {
-    background: hslToHex(h, s * 0.3, 0.96),
-    land: hslToHex(h, s * 0.4, 0.92),
-    buildings: hslToHex(h, s * 0.5, 0.85),
-    water: hslToHex(h, s * 0.55, 0.78),
-    roads: hslToHex(h, s * 0.15, 0.99),
-    labels: hslToHex(h, Math.min(0.6, s * 0.7), 0.26),
+  const s = clamp(s0, 0.12, 0.6);
+  const hueFor = (role: PaletteRole): number => {
+    if (scheme === "complementary" && role === "water") return h + 180;
+    if (scheme === "analogous") {
+      if (role === "land") return h - 22;
+      if (role === "buildings") return h + 22;
+      if (role === "water") return h + 32;
+    }
+    return h;
   };
+  const tones = TONES[dark ? "dark" : "light"];
+  const out = {} as Palette;
+  for (const role of PALETTE_ROLES) {
+    const [sm, l] = tones[role];
+    out[role] = hslToHex(hueFor(role), Math.min(0.7, s * sm), l);
+  }
+  return out;
 }

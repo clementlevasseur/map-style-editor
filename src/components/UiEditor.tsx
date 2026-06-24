@@ -1,10 +1,28 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
-import { layoutProps, paintProps, type PropDef } from "../lib/specMeta";
+import { layerTypes, layoutProps, paintProps, type PropDef } from "../lib/specMeta";
 import { imageNames } from "../lib/styleImages";
 import { FONTS, GLYPHS_URL, shouldSwitchGlyphs } from "../lib/fonts";
+import { useDismiss } from "../lib/useDismiss";
 import PropertyControl from "./PropertyControl";
 import { ExternalLinkIcon, EyeIcon, EyeOffIcon, InfoIcon } from "./icons";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function defaultPaint(type: string): Record<string, unknown> {
+  switch (type) {
+    case "fill": return { "fill-color": "#9aa0ad", "fill-opacity": 0.6 };
+    case "line": return { "line-color": "#6c7382", "line-width": 1 };
+    case "circle": return { "circle-color": "#cf5b5b", "circle-radius": 4 };
+    case "background": return { "background-color": "#cccccc" };
+    case "fill-extrusion": return { "fill-extrusion-color": "#9aa0ad", "fill-extrusion-height": 10 };
+    case "symbol": return { "text-color": "#333333" };
+    default: return {};
+  }
+}
+function defaultLayout(type: string): Record<string, unknown> | undefined {
+  if (type === "symbol") return { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 12 };
+  return undefined;
+}
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -35,6 +53,10 @@ function typeColor(t: string): string {
 export default function UiEditor({ style, onChange }: Props) {
   const [selected, setSelected] = useState(0);
   const [filter, setFilter] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [nl, setNl] = useState({ type: "fill", source: "", sourceLayer: "" });
+  const addRef = useRef<HTMLDivElement>(null);
+  useDismiss(addRef, adding, () => setAdding(false));
 
   const layers = (style?.layers ?? []) as any[];
   const idx = Math.min(selected, Math.max(0, layers.length - 1));
@@ -66,6 +88,11 @@ export default function UiEditor({ style, onChange }: Props) {
         ),
       ),
     [layers, layer?.source],
+  );
+  // Source-layers already used anywhere in the style — pick-list for new layers.
+  const usedSourceLayers = useMemo(
+    () => (Array.from(new Set(layers.map((l) => l["source-layer"]).filter(Boolean))) as string[]).sort(),
+    [layers],
   );
 
   if (!style) {
@@ -126,12 +153,37 @@ export default function UiEditor({ style, onChange }: Props) {
     return `${base}-${n}`;
   }
 
-  function addLayer() {
-    const id = uniqueId("new-layer");
+  function defaultSource(): string {
+    const counts = new Map<string, number>();
+    for (const l of layers) if (l.source) counts.set(l.source, (counts.get(l.source) ?? 0) + 1);
+    let best = sourceNames[0] ?? "";
+    let max = 0;
+    for (const [s, n] of counts) if (n > max) { max = n; best = s; }
+    return best;
+  }
+
+  function openAdd() {
+    setNl({ type: "fill", source: defaultSource(), sourceLayer: "" });
+    setAdding(true);
+  }
+
+  function createLayer() {
+    const { type, source, sourceLayer } = nl;
+    const id = uniqueId(type + (sourceLayer ? `-${sourceLayer}` : ""));
     commit((s) => {
-      (s.layers as any[]).push({ id, type: "background", paint: { "background-color": "#cccccc" } });
+      const layer: any = { id, type };
+      if (type !== "background") {
+        if (source) layer.source = source;
+        if (sourceLayer) layer["source-layer"] = sourceLayer;
+      }
+      const lay = defaultLayout(type);
+      if (lay) layer.layout = lay;
+      layer.paint = defaultPaint(type);
+      (s.layers as any[]).push(layer);
+      if (type === "symbol" && shouldSwitchGlyphs((s as any).glyphs)) (s as any).glyphs = GLYPHS_URL;
     });
     setSelected(layers.length);
+    setAdding(false);
   }
 
   function duplicateLayer(i: number) {
@@ -173,9 +225,6 @@ export default function UiEditor({ style, onChange }: Props) {
         <div className="layers__head">
           <span className="layers__title">Layers</span>
           <span style={{ color: "var(--text-faint)", fontSize: 11 }}>{layers.length}</span>
-          <button className="btn btn--icon" title="Add a layer" style={{ marginLeft: "auto" }} onClick={addLayer}>
-            + Add
-          </button>
         </div>
         <input
           className="input layers__filter"
@@ -210,6 +259,63 @@ export default function UiEditor({ style, onChange }: Props) {
               </div>
             );
           })}
+        </div>
+        <div className="addlayer-wrap" ref={addRef}>
+          <button className="layers__add" onClick={() => (adding ? setAdding(false) : openAdd())}>
+            + Add layer
+          </button>
+          {adding && (
+            <div className="addlayer">
+              <div className="addlayer__row">
+                <label>Type</label>
+                <select className="select" value={nl.type} onChange={(e) => setNl((v) => ({ ...v, type: e.target.value }))}>
+                  {layerTypes().map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {nl.type !== "background" && (
+                <>
+                  <div className="addlayer__row">
+                    <label>Source</label>
+                    <select className="select" value={nl.source} onChange={(e) => setNl((v) => ({ ...v, source: e.target.value }))}>
+                      <option value="">(none)</option>
+                      {sourceNames.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="addlayer__row">
+                    <label>Source layer</label>
+                    <input
+                      className="input"
+                      list="nl-srclayers"
+                      placeholder="e.g. water, transportation…"
+                      value={nl.sourceLayer}
+                      onChange={(e) => setNl((v) => ({ ...v, sourceLayer: e.target.value }))}
+                    />
+                    <datalist id="nl-srclayers">
+                      {usedSourceLayers.map((s) => (
+                        <option key={s} value={s} />
+                      ))}
+                    </datalist>
+                  </div>
+                </>
+              )}
+              <div className="addlayer__actions">
+                <button className="btn btn--primary" onClick={createLayer}>
+                  Add layer
+                </button>
+                <button className="btn" onClick={() => setAdding(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

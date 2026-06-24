@@ -9,6 +9,7 @@ import {
   setSpriteUrl,
   type EditorImage,
 } from "../lib/styleImages";
+import { toast } from "../lib/toast";
 
 interface Props {
   style: StyleSpecification | null;
@@ -61,7 +62,7 @@ export default function ImagesPanel({ style, onChange }: Props) {
         };
         next = setImage(next, name, img);
       } catch {
-        alert(`Could not read image: ${file.name}`);
+        toast(`Could not read image: ${file.name}`, "error");
       }
     }
     onChange(next);

@@ -27,10 +27,27 @@ interface ViewState {
   zoom: number;
 }
 
+const VIEW_KEY = "map-style-editor:view";
+function loadView(): ViewState | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(VIEW_KEY) || "null");
+    return v && typeof v.lng === "number" ? v : null;
+  } catch {
+    return null;
+  }
+}
+function saveView(v: ViewState): void {
+  try {
+    localStorage.setItem(VIEW_KEY, JSON.stringify(v));
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function MapPreview({ style }: MapPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const [view, setView] = useState<ViewState>({ lng: 2.35, lat: 48.85, zoom: 11 });
+  const [view, setView] = useState<ViewState>(() => loadView() ?? { lng: 2.35, lat: 48.85, zoom: 11 });
 
   // Init map once.
   useEffect(() => {
@@ -48,6 +65,10 @@ export default function MapPreview({ style }: MapPreviewProps) {
       setView({ lng: c.lng, lat: c.lat, zoom: map.getZoom() });
     };
     map.on("move", update);
+    map.on("moveend", () => {
+      const c = map.getCenter();
+      saveView({ lng: c.lng, lat: c.lat, zoom: map.getZoom() });
+    });
     mapRef.current = map;
 
     // Keep the canvas in sync with its container (panel drag, window resize…).
