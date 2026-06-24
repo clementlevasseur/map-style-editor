@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
 import { layoutProps, paintProps, type PropDef } from "../lib/specMeta";
 import PropertyControl from "./PropertyControl";
-import { ExternalLinkIcon, InfoIcon } from "./icons";
+import { ExternalLinkIcon, EyeIcon, EyeOffIcon, InfoIcon } from "./icons";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -139,7 +139,7 @@ export default function UiEditor({ style, onChange }: Props) {
                     toggleVisibility(i);
                   }}
                 >
-                  {hidden ? "🚫" : "👁"}
+                  {hidden ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
                 <span className="layer-row__name">{l.id ?? "(sans id)"}</span>
                 <span className="type-badge" style={{ background: typeColor(l.type) }}>

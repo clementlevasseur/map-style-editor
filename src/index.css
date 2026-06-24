@@ -268,16 +268,21 @@ button {
   border-left-color: var(--accent);
 }
 .layer-row__eye {
+  display: flex;
+  align-items: center;
   background: none;
   border: none;
   cursor: pointer;
   padding: 0;
-  font-size: 12px;
-  line-height: 1;
+  color: var(--text);
   opacity: 0.85;
 }
+.layer-row__eye:hover {
+  color: var(--accent);
+  opacity: 1;
+}
 .layer-row__eye--off {
-  opacity: 0.35;
+  opacity: 0.4;
 }
 .layer-row__name {
   flex: 1;
