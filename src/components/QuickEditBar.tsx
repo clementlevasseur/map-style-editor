@@ -6,6 +6,7 @@ import BrandPanel from "./BrandPanel";
 interface Props {
   style: StyleSpecification | null;
   onChange: (style: StyleSpecification) => void;
+  contrastLow?: boolean;
 }
 
 const EXAMPLES: { group: string; items: string[] }[] = [
@@ -32,7 +33,7 @@ const EXAMPLES: { group: string; items: string[] }[] = [
 
 type PanelKind = "none" | "commands" | "brand";
 
-export default function QuickEditBar({ style, onChange }: Props) {
+export default function QuickEditBar({ style, onChange, contrastLow }: Props) {
   const [cmd, setCmd] = useState("");
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [panel, setPanel] = useState<PanelKind>("none");
@@ -98,6 +99,11 @@ export default function QuickEditBar({ style, onChange }: Props) {
           Commands
         </button>
         {msg && <span className={"quickedit__msg " + (msg.ok ? "ok" : "err")}>{msg.text}</span>}
+        {!msg && contrastLow && (
+          <span className="quickedit__msg err" title="Label color may be hard to read on the background">
+            ⚠ Low label contrast
+          </span>
+        )}
       </div>
 
       {panel === "brand" && <BrandPanel style={style} onChange={onChange} />}

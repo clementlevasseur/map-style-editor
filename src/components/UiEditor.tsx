@@ -118,12 +118,64 @@ export default function UiEditor({ style, onChange }: Props) {
     });
   }
 
+  function uniqueId(base: string): string {
+    const ids = new Set(layers.map((l) => l.id));
+    if (!ids.has(base)) return base;
+    let n = 1;
+    while (ids.has(`${base}-${n}`)) n++;
+    return `${base}-${n}`;
+  }
+
+  function addLayer() {
+    const id = uniqueId("new-layer");
+    commit((s) => {
+      (s.layers as any[]).push({ id, type: "background", paint: { "background-color": "#cccccc" } });
+    });
+    setSelected(layers.length);
+  }
+
+  function duplicateLayer(i: number) {
+    commit((s) => {
+      const arr = s.layers as any[];
+      const copy = structuredClone(arr[i]);
+      copy.id = uniqueId(`${arr[i].id}-copy`);
+      arr.splice(i + 1, 0, copy);
+    });
+    setSelected(i + 1);
+  }
+
+  function deleteLayer(i: number) {
+    commit((s) => {
+      (s.layers as any[]).splice(i, 1);
+    });
+    setSelected(Math.max(0, i - 1));
+  }
+
+  function moveLayer(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    if (j < 0 || j >= layers.length) return;
+    commit((s) => {
+      const arr = s.layers as any[];
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    });
+    setSelected(j);
+  }
+
+  function renameLayer(i: number, id: string) {
+    commit((s) => {
+      (s.layers as any[])[i].id = id;
+    });
+  }
+
   return (
     <div className="panecol">
       <div className="layers" style={{ flex: "0 0 40%" }}>
         <div className="layers__head">
           <span className="layers__title">Layers</span>
           <span style={{ color: "var(--text-faint)", fontSize: 11 }}>{layers.length}</span>
+          <button className="btn btn--icon" title="Add a layer" style={{ marginLeft: "auto" }} onClick={addLayer}>
+            + Add
+          </button>
         </div>
         <input
           className="input layers__filter"
@@ -168,7 +220,26 @@ export default function UiEditor({ style, onChange }: Props) {
               <span className="type-badge" style={{ background: typeColor(layer.type) }}>
                 {layer.type}
               </span>
-              <span className="name">{layer.id}</span>
+              <input
+                className="input props__name"
+                value={layer.id ?? ""}
+                title="Rename layer"
+                onChange={(e) => renameLayer(idx, e.target.value)}
+              />
+              <div className="props__actions">
+                <button className="btn btn--icon" title="Move up" onClick={() => moveLayer(idx, -1)} disabled={idx === 0}>
+                  ▲
+                </button>
+                <button className="btn btn--icon" title="Move down" onClick={() => moveLayer(idx, 1)} disabled={idx === layers.length - 1}>
+                  ▼
+                </button>
+                <button className="btn btn--icon" title="Duplicate" onClick={() => duplicateLayer(idx)}>
+                  ⧉
+                </button>
+                <button className="btn btn--icon" title="Delete" onClick={() => deleteLayer(idx)}>
+                  ✕
+                </button>
+              </div>
             </div>
 
             <Section title="General">

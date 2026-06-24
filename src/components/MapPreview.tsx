@@ -11,6 +11,16 @@ interface MapPreviewProps {
   style: StyleSpecification | null;
 }
 
+const PLACES: { name: string; center: [number, number]; zoom: number }[] = [
+  { name: "Paris", center: [2.35, 48.85], zoom: 11 },
+  { name: "London", center: [-0.12, 51.5], zoom: 11 },
+  { name: "New York", center: [-74.0, 40.71], zoom: 11 },
+  { name: "Tokyo", center: [139.7, 35.68], zoom: 11 },
+  { name: "San Francisco", center: [-122.43, 37.77], zoom: 12 },
+  { name: "Alps (terrain)", center: [7.66, 45.97], zoom: 9 },
+  { name: "World", center: [10, 30], zoom: 1.6 },
+];
+
 interface ViewState {
   lng: number;
   lat: number;
@@ -92,6 +102,23 @@ export default function MapPreview({ style }: MapPreviewProps) {
   return (
     <div className="map-wrap">
       <div ref={containerRef} className="map-canvas" />
+      <select
+        className="select map-places"
+        value=""
+        title="Jump to a location"
+        onChange={(e) => {
+          const p = PLACES.find((x) => x.name === e.target.value);
+          e.target.value = "";
+          if (p) mapRef.current?.flyTo({ center: p.center, zoom: p.zoom });
+        }}
+      >
+        <option value="">Go to…</option>
+        {PLACES.map((p) => (
+          <option key={p.name} value={p.name}>
+            {p.name}
+          </option>
+        ))}
+      </select>
       <div className="map-coords">
         {view.lat.toFixed(4)}, {view.lng.toFixed(4)} · z{view.zoom.toFixed(2)}
       </div>

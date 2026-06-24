@@ -10,25 +10,40 @@ import QuickEditBar from "./components/QuickEditBar";
 import { clearSavedStyle, loadSavedStyle, saveStyle } from "./lib/persistence";
 import { fetchStyleText } from "./lib/styleLoader";
 import { DEFAULT_STYLE_URL, FALLBACK_STYLE } from "./lib/defaultStyle";
+import { clearShareHash, readSharedStyle } from "./lib/share";
+import { checkLabelContrast } from "./lib/contrast";
 
 const FALLBACK_TEXT = JSON.stringify(FALLBACK_STYLE, null, 2);
+const HISTORY_MAX = 60;
 
 export default function App() {
   const [text, setText] = useState<string>("");
   const [parsedStyle, setParsedStyle] = useState<StyleSpecification | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"ui" | "json" | "images">("ui");
+  const [past, setPast] = useState<string[]>([]);
+  const [future, setFuture] = useState<string[]>([]);
 
-  // Initial load: saved work > default remote style > inline fallback.
+  // Initial load: shared link (#s=) > saved work > default remote style > fallback.
   useEffect(() => {
-    const saved = loadSavedStyle();
-    if (saved) {
-      setText(saved);
-      return;
-    }
-    fetchStyleText(DEFAULT_STYLE_URL)
-      .then(setText)
-      .catch(() => setText(FALLBACK_TEXT));
+    (async () => {
+      const shared = await readSharedStyle();
+      if (shared) {
+        setText(shared);
+        clearShareHash();
+        return;
+      }
+      const saved = loadSavedStyle();
+      if (saved) {
+        setText(saved);
+        return;
+      }
+      try {
+        setText(await fetchStyleText(DEFAULT_STYLE_URL));
+      } catch {
+        setText(FALLBACK_TEXT);
+      }
+    })();
   }, []);
 
   // Debounced parse: keep last valid style on the map, surface errors otherwise.
@@ -49,27 +64,82 @@ export default function App() {
     return () => window.clearTimeout(timer.current);
   }, [text]);
 
-  function handleReset() {
-    clearSavedStyle();
-    fetchStyleText(DEFAULT_STYLE_URL)
-      .then(setText)
-      .catch(() => setText(FALLBACK_TEXT));
+  /** Replace the style text and record an undo step. */
+  function loadText(newText: string) {
+    setPast((p) => [...p, text].slice(-HISTORY_MAX));
+    setFuture([]);
+    setText(newText);
   }
 
-  // UI / Images edits already produce a valid object, so update the parsed style
-  // (and thus the map + controlled inputs) immediately, then keep the JSON text in
-  // sync. The 300ms debounce only matters for raw typing in the JSON tab — applying
-  // it here would lag controlled inputs and drop characters mid-typing.
+  function handleReset() {
+    clearSavedStyle();
+    fetchStyleText(DEFAULT_STYLE_URL).then(loadText).catch(() => loadText(FALLBACK_TEXT));
+  }
+
+  // UI / Images / quick-edit changes already produce a valid object, so update the
+  // parsed style immediately (no input lag) and record an undo step.
   function handleStyleObjectChange(next: StyleSpecification) {
+    setPast((p) => [...p, text].slice(-HISTORY_MAX));
+    setFuture([]);
     setParsedStyle(next);
     setError(null);
     setText(JSON.stringify(next, null, 2));
   }
 
+  function undo() {
+    setPast((p) => {
+      if (!p.length) return p;
+      const prev = p[p.length - 1];
+      setFuture((f) => [text, ...f]);
+      setText(prev);
+      return p.slice(0, -1);
+    });
+  }
+
+  function redo() {
+    setFuture((f) => {
+      if (!f.length) return f;
+      const nxt = f[0];
+      setPast((p) => [...p, text]);
+      setText(nxt);
+      return f.slice(1);
+    });
+  }
+
+  // Keyboard undo/redo, but let Monaco / inputs handle their own when focused.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest(".monaco-editor, input, textarea, [contenteditable=true]")) return;
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if (key === "y" || (key === "z" && e.shiftKey)) {
+        e.preventDefault();
+        redo();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, past, future]);
+
+  const contrast = checkLabelContrast(parsedStyle);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <Toolbar onLoad={setText} currentText={text} onReset={handleReset} />
-      <QuickEditBar style={parsedStyle} onChange={handleStyleObjectChange} />
+      <Toolbar
+        onLoad={loadText}
+        currentText={text}
+        onReset={handleReset}
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={past.length > 0}
+        canRedo={future.length > 0}
+      />
+      <QuickEditBar style={parsedStyle} onChange={handleStyleObjectChange} contrastLow={!!contrast?.low} />
       <div style={{ flex: 1, minHeight: 0 }}>
         <PanelGroup direction="horizontal">
           <Panel defaultSize={42} minSize={20}>

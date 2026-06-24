@@ -1,5 +1,6 @@
 import type { StyleSpecification } from "maplibre-gl";
 import { FONTS, GLYPHS_URL, shouldSwitchGlyphs } from "./fonts";
+import { adjustColor, derivePalette, PALETTE_ROLES } from "./color";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -107,6 +108,21 @@ export function colorRole(layers: any[], role: RoleKey, color: string): number {
   return count;
 }
 
+/** Adjust (lighten/darken/saturate) the current color of a role (mutates). Returns count. */
+function adjustRole(layers: any[], role: RoleKey, dl: number, ds: number): number {
+  let count = 0;
+  for (const l of layers) {
+    if (!matchLayer(role, l)) continue;
+    if (role === "roads" && /(casing|outline)/.test(lid(l))) continue;
+    const prop = role === "labels" ? "text-color" : COLOR_PROP[l.type];
+    const cur = prop && l.paint?.[prop];
+    if (typeof cur !== "string") continue;
+    l.paint = { ...(l.paint || {}), [prop]: adjustColor(cur, dl, ds) };
+    count++;
+  }
+  return count;
+}
+
 /** Read the current color of a role (first matching layer), if it is a plain string. */
 export function readRoleColor(layers: any[], role: RoleKey): string | undefined {
   for (const l of layers) {
@@ -165,6 +181,34 @@ export function runQuickEdit(style: StyleSpecification, raw: string): QuickEditR
     for (const l of layers) if (l.type === "symbol") { l.layout = { ...(l.layout || {}), "text-size": num }; c++; }
     if (!c) return { error: "No label layers found." };
     return { style: next, summary: `Set label size to ${num} on ${c} layer${c > 1 ? "s" : ""}.` };
+  }
+
+  // THEME dark / light
+  if (/\btheme\b/.test(cmd)) {
+    const wantDark = /\b(dark|sombre|nuit)\b/.test(cmd);
+    const wantLight = /\b(light|clair|jour)\b/.test(cmd);
+    if (wantDark || wantLight) {
+      const base = readRoleColor(layers, "background") || "#3b6fe2";
+      const pal = derivePalette(base, wantDark);
+      let c = 0;
+      for (const role of PALETTE_ROLES) c += colorRole(layers, role as RoleKey, (pal as any)[role]);
+      return { style: next, summary: `Applied ${wantDark ? "dark" : "light"} theme to ${c} layer${c > 1 ? "s" : ""}.` };
+    }
+  }
+
+  // RELATIVE ADJUST (lighten / darken / saturate / desaturate)
+  const lighten = /\b(lighten|lighter|[eé]claircir)\b/.test(cmd);
+  const darken = /\b(darken|darker|assombrir)\b/.test(cmd);
+  const desaturate = /\b(desaturate|d[eé]saturer|desaturer)\b/.test(cmd);
+  const saturate = !desaturate && /\b(saturate|saturer)\b/.test(cmd);
+  if (lighten || darken || saturate || desaturate) {
+    const dl = lighten ? 0.1 : darken ? -0.1 : 0;
+    const ds = saturate ? 0.15 : desaturate ? -0.15 : 0;
+    const roles: RoleKey[] = role ? [role] : ["background", "land", "water", "roads", "buildings"];
+    let c = 0;
+    for (const r of roles) c += adjustRole(layers, r, dl, ds);
+    if (!c) return { error: "No colored layers found to adjust." };
+    return { style: next, summary: `Adjusted ${role ?? "map"} on ${c} layer${c > 1 ? "s" : ""}.` };
   }
 
   // FONT

@@ -2,21 +2,28 @@ import { useRef, useState } from "react";
 import { downloadStyle, fetchStyleText, readFileText } from "../lib/styleLoader";
 import { DEFAULT_STYLE_URL } from "../lib/defaultStyle";
 import { TEMPLATES, templatesByGroup } from "../lib/templates";
-import { getImages, getSpriteUrl } from "../lib/styleImages";
+import { getImages } from "../lib/styleImages";
 import { buildSprite, downloadBlob } from "../lib/sprite";
 import { createZip } from "../lib/zip";
+import { buildShareUrl } from "../lib/share";
 import Logo from "./Logo";
+import SavedMenu from "./SavedMenu";
+import SnippetMenu from "./SnippetMenu";
+import { GitHubIcon, RedoIcon, ShareIcon, UndoIcon } from "./icons";
+
+const REPO_URL = "https://github.com/clementlevasseur/map-style-editor";
 
 interface ToolbarProps {
-  /** Replace the editor content (e.g. after loading from URL / file). */
   onLoad: (text: string) => void;
-  /** Current editor text, for export. */
   currentText: string;
-  /** Reset to the default style and clear persistence. */
   onReset: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
-export default function Toolbar({ onLoad, currentText, onReset }: ToolbarProps) {
+export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, canUndo, canRedo }: ToolbarProps) {
   const [url, setUrl] = useState(DEFAULT_STYLE_URL);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -53,8 +60,8 @@ export default function Toolbar({ onLoad, currentText, onReset }: ToolbarProps) 
     }
   }
 
-  // Export the style. If it has user images, bundle style.json + a generated
-  // sprite (png + json) into a single zip; otherwise just download style.json.
+  // Export: bundle style.json + a generated sprite into a zip when the style has
+  // images; plain style.json otherwise.
   async function handleExport() {
     let style: unknown;
     try {
@@ -63,25 +70,39 @@ export default function Toolbar({ onLoad, currentText, onReset }: ToolbarProps) 
       downloadStyle(currentText);
       return;
     }
-    const hasImages = Object.keys(getImages(style as never)).length > 0;
-    if (!hasImages) {
+    if (!Object.keys(getImages(style as never)).length) {
       downloadStyle(currentText);
       return;
     }
     setBusy(true);
     try {
       const sprite = await buildSprite(style as never);
-      // Production style.json: reference the generated sprite (default "sprite",
-      // i.e. hosted next to style.json). The working/preview copy is left untouched.
-      const spriteUrl = getSpriteUrl(style as never) || "sprite";
-      const exportStyle = { ...(style as Record<string, unknown>), sprite: spriteUrl };
       const enc = new TextEncoder();
-      const files = [{ name: "style.json", data: enc.encode(JSON.stringify(exportStyle, null, 2)) }];
+      const files = [{ name: "style.json", data: enc.encode(currentText) }];
       if (sprite) {
         files.push({ name: "sprite.json", data: enc.encode(sprite.json) });
         files.push({ name: "sprite.png", data: new Uint8Array(await sprite.png.arrayBuffer()) });
       }
       downloadBlob(createZip(files), "map-style.zip");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleShare() {
+    setBusy(true);
+    try {
+      const { url: link, strippedImages } = await buildShareUrl(currentText);
+      const note = strippedImages ? "\n\nNote: images aren't included in the link — use Export for those." : "";
+      try {
+        await navigator.clipboard.writeText(link);
+        alert("Share link copied to clipboard." + note);
+      } catch {
+        // Clipboard blocked (permissions / non-secure context) — offer manual copy.
+        prompt("Copy this share link:" + note, link);
+      }
+    } catch (e) {
+      alert(`Could not create a share link.\n${e instanceof Error ? e.message : e}`);
     } finally {
       setBusy(false);
     }
@@ -106,6 +127,13 @@ export default function Toolbar({ onLoad, currentText, onReset }: ToolbarProps) 
         <span>Map Style Editor</span>
       </div>
 
+      <button className="btn btn--icon" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+        <UndoIcon />
+      </button>
+      <button className="btn btn--icon" onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)">
+        <RedoIcon />
+      </button>
+
       <select className="select" style={{ width: "auto" }} value="" onChange={handleTemplate} title="Load a preset style">
         <option value="">Templates…</option>
         {templatesByGroup().map((g) => (
@@ -127,12 +155,13 @@ export default function Toolbar({ onLoad, currentText, onReset }: ToolbarProps) 
           onKeyDown={(e) => e.key === "Enter" && handleLoadUrl()}
         />
         <button onClick={handleLoadUrl} disabled={busy}>
-          {busy ? "Loading…" : "Load"}
+          {busy ? "…" : "Load"}
         </button>
       </div>
 
       <div className="toolbar__spacer" />
 
+      <SavedMenu currentText={currentText} onLoad={onLoad} />
       <button className="btn" onClick={() => fileRef.current?.click()}>
         Import…
       </button>
@@ -140,9 +169,16 @@ export default function Toolbar({ onLoad, currentText, onReset }: ToolbarProps) 
       <button className="btn btn--primary" onClick={handleExport} disabled={busy}>
         Export
       </button>
+      <button className="btn" onClick={handleShare} disabled={busy} title="Copy a shareable link">
+        <ShareIcon /> Share
+      </button>
+      <SnippetMenu />
       <button className="btn" onClick={onReset} title="Back to the default style">
         Reset
       </button>
+      <a className="btn btn--icon" href={REPO_URL} target="_blank" rel="noopener noreferrer" title="View on GitHub">
+        <GitHubIcon />
+      </a>
     </div>
   );
 }
