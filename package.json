@@ -2,6 +2,14 @@
   "name": "map-style-editor",
   "private": true,
   "version": "0.1.0",
+  "description": "A lightweight web editor for MapLibre GL styles with a live map preview.",
+  "license": "MIT",
+  "author": "Clement Levasseur",
+  "homepage": "https://clementlevasseur.github.io/map-style-editor/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/clementlevasseur/map-style-editor.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

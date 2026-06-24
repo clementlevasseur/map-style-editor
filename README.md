@@ -60,3 +60,7 @@ Vite, React, TypeScript, `maplibre-gl`, `pmtiles`, `@monaco-editor/react`, and
 - Monaco is loaded from a CDN by `@monaco-editor/react`'s default loader, so the app
   needs a connection (it already does, to fetch tiles). The MapLibre schema and
   validator are bundled locally.
+
+## License
+
+[MIT](LICENSE) © Clement Levasseur

@@ -17,13 +17,6 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"ui" | "json">("ui");
 
-  // Dev-only test hook so automated checks can drive the editor end-to-end.
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      (window as unknown as { __setStyleText?: (t: string) => void }).__setStyleText = setText;
-    }
-  }, []);
-
   // Initial load: saved work > default remote style > inline fallback.
   useEffect(() => {
     const saved = loadSavedStyle();
@@ -48,7 +41,7 @@ export default function App() {
         setError(null);
         saveStyle(text);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "JSON invalide");
+        setError(e instanceof Error ? e.message : "Invalid JSON");
       }
     }, 300);
     return () => window.clearTimeout(timer.current);
