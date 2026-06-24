@@ -2,6 +2,9 @@ import { useRef, useState } from "react";
 import { downloadStyle, fetchStyleText, readFileText } from "../lib/styleLoader";
 import { DEFAULT_STYLE_URL } from "../lib/defaultStyle";
 import { TEMPLATES, templatesByGroup } from "../lib/templates";
+import { getImages } from "../lib/styleImages";
+import { buildSprite, downloadBlob } from "../lib/sprite";
+import { createZip } from "../lib/zip";
 import Logo from "./Logo";
 
 interface ToolbarProps {
@@ -45,6 +48,36 @@ export default function Toolbar({ onLoad, currentText, onReset }: ToolbarProps) 
       onLoad(await fetchStyleText(tpl.url!));
     } catch (err) {
       alert(`Failed to load the template.\n${err instanceof Error ? err.message : err}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Export the style. If it has user images, bundle style.json + a generated
+  // sprite (png + json) into a single zip; otherwise just download style.json.
+  async function handleExport() {
+    let style: unknown;
+    try {
+      style = JSON.parse(currentText);
+    } catch {
+      downloadStyle(currentText);
+      return;
+    }
+    const hasImages = Object.keys(getImages(style as never)).length > 0;
+    if (!hasImages) {
+      downloadStyle(currentText);
+      return;
+    }
+    setBusy(true);
+    try {
+      const sprite = await buildSprite(style as never);
+      const enc = new TextEncoder();
+      const files = [{ name: "style.json", data: enc.encode(currentText) }];
+      if (sprite) {
+        files.push({ name: "sprite.json", data: enc.encode(sprite.json) });
+        files.push({ name: "sprite.png", data: new Uint8Array(await sprite.png.arrayBuffer()) });
+      }
+      downloadBlob(createZip(files), "map-style.zip");
     } finally {
       setBusy(false);
     }
@@ -100,7 +133,7 @@ export default function Toolbar({ onLoad, currentText, onReset }: ToolbarProps) 
         Import…
       </button>
       <input ref={fileRef} type="file" accept=".json,application/json" onChange={handleFile} style={{ display: "none" }} />
-      <button className="btn btn--primary" onClick={() => downloadStyle(currentText)}>
+      <button className="btn btn--primary" onClick={handleExport} disabled={busy}>
         Export
       </button>
       <button className="btn" onClick={onReset} title="Back to the default style">

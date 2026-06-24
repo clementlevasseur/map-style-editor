@@ -30,6 +30,9 @@ export function downloadStyle(text: string, filename = "style.json"): void {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  // Revoke later — revoking synchronously can cancel the download.
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }

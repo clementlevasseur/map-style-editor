@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
 import { layoutProps, paintProps, type PropDef } from "../lib/specMeta";
+import { imageNames } from "../lib/styleImages";
 import PropertyControl from "./PropertyControl";
 import { ExternalLinkIcon, EyeIcon, EyeOffIcon, InfoIcon } from "./icons";
 
@@ -37,6 +38,7 @@ export default function UiEditor({ style, onChange }: Props) {
   const layers = (style?.layers ?? []) as any[];
   const idx = Math.min(selected, Math.max(0, layers.length - 1));
   const layer = layers[idx];
+  const imageOpts = imageNames(style);
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -232,8 +234,8 @@ export default function UiEditor({ style, onChange }: Props) {
               </div>
             </Section>
 
-            <PropSection title="Layout" defs={layoutProps(layer.type)} values={layer.layout} idx={idx} kind="layout" onChange={updateProp} />
-            <PropSection title="Paint" defs={paintProps(layer.type)} values={layer.paint} idx={idx} kind="paint" onChange={updateProp} />
+            <PropSection title="Layout" defs={layoutProps(layer.type)} values={layer.layout} idx={idx} kind="layout" images={imageOpts} onChange={updateProp} />
+            <PropSection title="Paint" defs={paintProps(layer.type)} values={layer.paint} idx={idx} kind="paint" images={imageOpts} onChange={updateProp} />
           </>
         ) : (
           <div className="empty-note">Select a layer.</div>
@@ -249,6 +251,7 @@ function PropSection({
   values,
   idx,
   kind,
+  images,
   onChange,
 }: {
   title: string;
@@ -256,6 +259,7 @@ function PropSection({
   values: Record<string, unknown> | undefined;
   idx: number;
   kind: "paint" | "layout";
+  images: string[];
   onChange: (kind: "paint" | "layout", name: string, value: unknown) => void;
 }) {
   if (defs.length === 0) return null;
@@ -266,6 +270,7 @@ function PropSection({
           key={`${idx}:${kind}:${def.name}`}
           def={def}
           value={values?.[def.name]}
+          imageOptions={images}
           onChange={(v) => onChange(kind, def.name, v)}
         />
       ))}

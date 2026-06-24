@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl, { type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { registerMapProtocols } from "../lib/mapProtocols";
+import { hydrateMapImages } from "../lib/styleImages";
 
 registerMapProtocols();
 
@@ -71,6 +72,10 @@ export default function MapPreview({ style }: MapPreviewProps) {
       } catch {
         map.setStyle(s, { diff: false });
       }
+      // Re-register user images: a full style load clears runtime images, so also
+      // re-add once the style settles.
+      void hydrateMapImages(map, s);
+      map.once("styledata", () => void hydrateMapImages(map, s));
     };
 
     if (map.isStyleLoaded()) {

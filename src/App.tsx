@@ -4,6 +4,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import Toolbar from "./components/Toolbar";
 import StyleEditor from "./components/StyleEditor";
 import UiEditor from "./components/UiEditor";
+import ImagesPanel from "./components/ImagesPanel";
 import MapPreview from "./components/MapPreview";
 import { clearSavedStyle, loadSavedStyle, saveStyle } from "./lib/persistence";
 import { fetchStyleText } from "./lib/styleLoader";
@@ -15,7 +16,7 @@ export default function App() {
   const [text, setText] = useState<string>("");
   const [parsedStyle, setParsedStyle] = useState<StyleSpecification | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"ui" | "json">("ui");
+  const [tab, setTab] = useState<"ui" | "json" | "images">("ui");
 
   // Initial load: saved work > default remote style > inline fallback.
   useEffect(() => {
@@ -54,8 +55,13 @@ export default function App() {
       .catch(() => setText(FALLBACK_TEXT));
   }
 
-  // UI editor edits the style object -> re-serialise to keep JSON the source of truth.
+  // UI / Images edits already produce a valid object, so update the parsed style
+  // (and thus the map + controlled inputs) immediately, then keep the JSON text in
+  // sync. The 300ms debounce only matters for raw typing in the JSON tab — applying
+  // it here would lag controlled inputs and drop characters mid-typing.
   function handleStyleObjectChange(next: StyleSpecification) {
+    setParsedStyle(next);
+    setError(null);
     setText(JSON.stringify(next, null, 2));
   }
 
@@ -73,13 +79,14 @@ export default function App() {
                 <button className={"tab" + (tab === "json" ? " tab--active" : "")} onClick={() => setTab("json")}>
                   JSON
                 </button>
+                <button className={"tab" + (tab === "images" ? " tab--active" : "")} onClick={() => setTab("images")}>
+                  Images
+                </button>
               </div>
               <div style={{ flex: 1, minHeight: 0 }}>
-                {tab === "ui" ? (
-                  <UiEditor style={parsedStyle} onChange={handleStyleObjectChange} />
-                ) : (
-                  <StyleEditor value={text} onChange={setText} error={error} />
-                )}
+                {tab === "ui" && <UiEditor style={parsedStyle} onChange={handleStyleObjectChange} />}
+                {tab === "json" && <StyleEditor value={text} onChange={setText} error={error} />}
+                {tab === "images" && <ImagesPanel style={parsedStyle} onChange={handleStyleObjectChange} />}
               </div>
             </div>
           </Panel>

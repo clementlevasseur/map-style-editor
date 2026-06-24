@@ -6,7 +6,17 @@ interface Props {
   def: PropDef;
   value: unknown;
   onChange: (value: unknown) => void;
+  /** Image names available (from the Images panel) for pattern/icon props. */
+  imageOptions?: string[];
 }
+
+const IMAGE_PROPS = new Set([
+  "fill-pattern",
+  "line-pattern",
+  "background-pattern",
+  "fill-extrusion-pattern",
+  "icon-image",
+]);
 
 /** Raw JSON editor for expression/array/object values (commit on blur). */
 function ExprField({ value, onChange }: { value: unknown; onChange: (v: unknown) => void }) {
@@ -28,7 +38,7 @@ function ExprField({ value, onChange }: { value: unknown; onChange: (v: unknown)
   );
 }
 
-export default function PropertyControl({ def, value, onChange }: Props) {
+export default function PropertyControl({ def, value, onChange, imageOptions }: Props) {
   const isExpr = Array.isArray(value) || (value !== null && typeof value === "object");
   const set = (v: unknown) => onChange(v);
 
@@ -36,6 +46,20 @@ export default function PropertyControl({ def, value, onChange }: Props) {
 
   if (isExpr) {
     control = <ExprField value={value} onChange={onChange} />;
+  } else if (IMAGE_PROPS.has(def.name)) {
+    const opts = imageOptions ?? [];
+    const current = value == null ? "" : String(value);
+    control = (
+      <select className="select" value={current} onChange={(e) => set(e.target.value || undefined)}>
+        <option value="">(none)</option>
+        {opts.map((n) => (
+          <option key={n} value={n}>
+            {n}
+          </option>
+        ))}
+        {current && !opts.includes(current) && <option value={current}>{current} (sprite)</option>}
+      </select>
+    );
   } else if (def.type === "color") {
     const hex = typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value) ? value : "#000000";
     control = (

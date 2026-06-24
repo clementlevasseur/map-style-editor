@@ -1,5 +1,7 @@
 # Map Style Editor
 
+**▶ Live demo: https://clementlevasseur.github.io/map-style-editor/**
+
 A lightweight web editor for **MapLibre GL** styles (spec v8) with a **live preview**.
 Edit the style on the left, see the map update instantly on the right — without the
 camera jumping around.
@@ -20,6 +22,10 @@ including OpenFreeMap-based and Protomaps/PMTiles-based styles.
   camera is preserved, and are safely deferred while a large style is still loading.
 - **Presets** — a curated list of key-free, CORS-enabled styles (OpenFreeMap, CARTO,
   VersaTiles, MapLibre demo) plus offline starters.
+- **Images & patterns** — upload PNG/SVG images used by `*-pattern` / `icon-image`.
+  They render live in the preview (via `addImage`) and are stored in the style; the
+  **Export** button then bundles `style.json` plus a generated `sprite.png` /
+  `sprite.json` into a single zip, ready to host.
 - **Load** a style from a URL, a file, or by pasting JSON; **export** the edited style.
 - **PMTiles** support (`pmtiles://`) so Protomaps-based styles render.
 - Work in progress is auto-saved to `localStorage`; a **Reset** button restores the
