@@ -1,6 +1,14 @@
 import { useRef } from "react";
 import type { StyleSpecification } from "maplibre-gl";
-import { getImages, loadImageEl, removeImage, setImage, type EditorImage } from "../lib/styleImages";
+import {
+  getImages,
+  getSpriteUrl,
+  loadImageEl,
+  removeImage,
+  setImage,
+  setSpriteUrl,
+  type EditorImage,
+} from "../lib/styleImages";
 
 interface Props {
   style: StyleSpecification | null;
@@ -85,6 +93,26 @@ export default function ImagesPanel({ style, onChange }: Props) {
         <code>style.json</code> + a generated <code>sprite.png</code>/<code>sprite.json</code>; host
         the sprite statically and set the style's <code>sprite</code> to its URL.
       </p>
+
+      {entries.length > 0 && (
+        <div style={{ padding: "0 12px 6px" }}>
+          <div className="prop">
+            <div className="prop__label">
+              <span>Sprite URL (used by Export)</span>
+            </div>
+            <input
+              className="input"
+              placeholder="sprite"
+              value={getSpriteUrl(style)}
+              onChange={(e) => onChange(setSpriteUrl(style!, e.target.value))}
+            />
+            <div className="prop__help">
+              The exported <code>style.json</code> references this as its <code>sprite</code> (no
+              extension). Leave empty to use <code>sprite</code> — host the files next to it.
+            </div>
+          </div>
+        </div>
+      )}
 
       {entries.length === 0 && <div className="empty-note">No images yet.</div>}
 

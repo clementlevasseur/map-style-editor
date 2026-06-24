@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
 import { layoutProps, paintProps, type PropDef } from "../lib/specMeta";
 import { imageNames } from "../lib/styleImages";
+import { FONTS, GLYPHS_URL, shouldSwitchGlyphs } from "../lib/fonts";
 import PropertyControl from "./PropertyControl";
 import { ExternalLinkIcon, EyeIcon, EyeOffIcon, InfoIcon } from "./icons";
 
@@ -89,6 +90,13 @@ export default function UiEditor({ style, onChange }: Props) {
         if (l[kind]) delete l[kind][name];
       } else {
         l[kind] = { ...(l[kind] || {}), [name]: value };
+      }
+      // Picking a curated font: make sure the style's glyphs server provides it.
+      if (kind === "layout" && name === "text-font" && Array.isArray(value)) {
+        const wanted = value.find((v) => FONTS.includes(v));
+        if (wanted && shouldSwitchGlyphs((s as any).glyphs)) {
+          (s as any).glyphs = GLYPHS_URL;
+        }
       }
     });
   }
@@ -234,8 +242,8 @@ export default function UiEditor({ style, onChange }: Props) {
               </div>
             </Section>
 
-            <PropSection title="Layout" defs={layoutProps(layer.type)} values={layer.layout} idx={idx} kind="layout" images={imageOpts} onChange={updateProp} />
-            <PropSection title="Paint" defs={paintProps(layer.type)} values={layer.paint} idx={idx} kind="paint" images={imageOpts} onChange={updateProp} />
+            <PropSection title="Layout" defs={layoutProps(layer.type)} values={layer.layout} idx={idx} kind="layout" images={imageOpts} fonts={FONTS} onChange={updateProp} />
+            <PropSection title="Paint" defs={paintProps(layer.type)} values={layer.paint} idx={idx} kind="paint" images={imageOpts} fonts={FONTS} onChange={updateProp} />
           </>
         ) : (
           <div className="empty-note">Select a layer.</div>
@@ -252,6 +260,7 @@ function PropSection({
   idx,
   kind,
   images,
+  fonts,
   onChange,
 }: {
   title: string;
@@ -260,6 +269,7 @@ function PropSection({
   idx: number;
   kind: "paint" | "layout";
   images: string[];
+  fonts: string[];
   onChange: (kind: "paint" | "layout", name: string, value: unknown) => void;
 }) {
   if (defs.length === 0) return null;
@@ -271,6 +281,7 @@ function PropSection({
           def={def}
           value={values?.[def.name]}
           imageOptions={images}
+          fontOptions={fonts}
           onChange={(v) => onChange(kind, def.name, v)}
         />
       ))}

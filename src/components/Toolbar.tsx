@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { downloadStyle, fetchStyleText, readFileText } from "../lib/styleLoader";
 import { DEFAULT_STYLE_URL } from "../lib/defaultStyle";
 import { TEMPLATES, templatesByGroup } from "../lib/templates";
-import { getImages } from "../lib/styleImages";
+import { getImages, getSpriteUrl } from "../lib/styleImages";
 import { buildSprite, downloadBlob } from "../lib/sprite";
 import { createZip } from "../lib/zip";
 import Logo from "./Logo";
@@ -71,8 +71,12 @@ export default function Toolbar({ onLoad, currentText, onReset }: ToolbarProps) 
     setBusy(true);
     try {
       const sprite = await buildSprite(style as never);
+      // Production style.json: reference the generated sprite (default "sprite",
+      // i.e. hosted next to style.json). The working/preview copy is left untouched.
+      const spriteUrl = getSpriteUrl(style as never) || "sprite";
+      const exportStyle = { ...(style as Record<string, unknown>), sprite: spriteUrl };
       const enc = new TextEncoder();
-      const files = [{ name: "style.json", data: enc.encode(currentText) }];
+      const files = [{ name: "style.json", data: enc.encode(JSON.stringify(exportStyle, null, 2)) }];
       if (sprite) {
         files.push({ name: "sprite.json", data: enc.encode(sprite.json) });
         files.push({ name: "sprite.png", data: new Uint8Array(await sprite.png.arrayBuffer()) });

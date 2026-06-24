@@ -26,7 +26,12 @@ including OpenFreeMap-based and Protomaps/PMTiles-based styles.
   They render live in the preview (via `addImage`) and are stored in the style; the
   **Export** button then bundles `style.json` plus a generated `sprite.png` /
   `sprite.json` into a single zip, ready to host.
-- **Load** a style from a URL, a file, or by pasting JSON; **export** the edited style.
+- **Fonts** — `text-font` is a dropdown of curated open-source fonts; picking one
+  points the style's `glyphs` at the OpenMapTiles server (which serves them) when the
+  current one can't, so labels render.
+- **Load** a style from a URL, a file, or by pasting JSON; **export** the edited style
+  (with images: a zip whose `style.json` references the generated sprite via a
+  configurable URL).
 - **PMTiles** support (`pmtiles://`) so Protomaps-based styles render.
 - Work in progress is auto-saved to `localStorage`; a **Reset** button restores the
   default.

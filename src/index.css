@@ -357,6 +357,19 @@ button {
   padding: 1px 5px;
   border-radius: 4px;
 }
+.prop__help {
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-faint);
+}
+.prop__help code {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  background: var(--bg);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
 .label-actions {
   margin-left: auto;
   display: flex;

@@ -22,6 +22,23 @@ export function getImages(style: StyleSpecification | null): Record<string, Edit
   return ((style?.metadata as any)?.[IMAGES_KEY] ?? {}) as Record<string, EditorImage>;
 }
 
+// Sprite URL the exported style.json should reference (kept in metadata so it
+// persists, but NOT applied to the working/preview style — the preview uses
+// addImage instead, and a dangling sprite URL would just 404).
+export const SPRITE_URL_KEY = "mse:spriteUrl";
+
+export function getSpriteUrl(style: StyleSpecification | null): string {
+  return ((style?.metadata as any)?.[SPRITE_URL_KEY] ?? "") as string;
+}
+
+export function setSpriteUrl(style: StyleSpecification, url: string): StyleSpecification {
+  const next = structuredClone(style) as any;
+  next.metadata = next.metadata ?? {};
+  if (url) next.metadata[SPRITE_URL_KEY] = url;
+  else delete next.metadata[SPRITE_URL_KEY];
+  return next;
+}
+
 export function imageNames(style: StyleSpecification | null): string[] {
   return Object.keys(getImages(style));
 }

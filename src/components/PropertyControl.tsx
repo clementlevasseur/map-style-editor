@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { PropDef } from "../lib/specMeta";
+import { FONT_PROPS } from "../lib/fonts";
 import { ExternalLinkIcon, InfoIcon } from "./icons";
 
 interface Props {
@@ -8,6 +9,8 @@ interface Props {
   onChange: (value: unknown) => void;
   /** Image names available (from the Images panel) for pattern/icon props. */
   imageOptions?: string[];
+  /** Open-source font stacks for text-font. */
+  fontOptions?: string[];
 }
 
 const IMAGE_PROPS = new Set([
@@ -38,13 +41,32 @@ function ExprField({ value, onChange }: { value: unknown; onChange: (v: unknown)
   );
 }
 
-export default function PropertyControl({ def, value, onChange, imageOptions }: Props) {
-  const isExpr = Array.isArray(value) || (value !== null && typeof value === "object");
+export default function PropertyControl({ def, value, onChange, imageOptions, fontOptions }: Props) {
+  // text-font is an array of font names; treat a single-font array as a simple
+  // dropdown, and only fall back to the raw expression editor for real expressions.
+  const isFontProp = FONT_PROPS.has(def.name);
+  const fontIsSimple = isFontProp && (value == null || (Array.isArray(value) && value.every((v) => typeof v === "string")));
+  const isExpr =
+    !fontIsSimple && (Array.isArray(value) || (value !== null && typeof value === "object"));
   const set = (v: unknown) => onChange(v);
 
   let control: React.ReactNode;
 
-  if (isExpr) {
+  if (isFontProp && fontIsSimple) {
+    const opts = fontOptions ?? [];
+    const current = Array.isArray(value) ? String(value[0] ?? "") : "";
+    control = (
+      <select className="select" value={current} onChange={(e) => set(e.target.value ? [e.target.value] : undefined)}>
+        <option value="">(default)</option>
+        {opts.map((n) => (
+          <option key={n} value={n}>
+            {n}
+          </option>
+        ))}
+        {current && !opts.includes(current) && <option value={current}>{current} (custom)</option>}
+      </select>
+    );
+  } else if (isExpr) {
     control = <ExprField value={value} onChange={onChange} />;
   } else if (IMAGE_PROPS.has(def.name)) {
     const opts = imageOptions ?? [];
@@ -159,6 +181,9 @@ export default function PropertyControl({ def, value, onChange, imageOptions }: 
         </span>
       </div>
       {control}
+      {isFontProp && fontIsSimple && (
+        <div className="prop__help">Open-source fonts served by the OpenMapTiles glyphs server.</div>
+      )}
     </div>
   );
 }
