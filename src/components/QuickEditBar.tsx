@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
 import { runQuickEdit } from "../lib/quickEdit";
+import BrandPanel from "./BrandPanel";
 
 interface Props {
   style: StyleSpecification | null;
@@ -17,20 +18,27 @@ const EXAMPLES: { group: string; items: string[] }[] = [
       "land beige",
       "buildings #dddddd",
       "labels #333333",
-      "boundaries #aaaaaa",
     ],
   },
   {
+    group: "Size & more",
+    items: ["roads width 2", "water opacity 0.6", "labels size 14", "hide buildings", "show water"],
+  },
+  {
     group: "Fonts",
-    items: ["font Metropolis Bold", "font Roboto", "font Open Sans Bold", "font Noto Sans Regular"],
+    items: ["font Metropolis Bold", "font Roboto", "font Open Sans Bold"],
   },
 ];
+
+type PanelKind = "none" | "commands" | "brand";
 
 export default function QuickEditBar({ style, onChange }: Props) {
   const [cmd, setCmd] = useState("");
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
-  const [helpOpen, setHelpOpen] = useState(false);
+  const [panel, setPanel] = useState<PanelKind>("none");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const toggle = (k: PanelKind) => setPanel((p) => (p === k ? "none" : k));
 
   function run(text = cmd) {
     if (!text.trim()) return;
@@ -76,8 +84,15 @@ export default function QuickEditBar({ style, onChange }: Props) {
           Apply
         </button>
         <button
-          className={"btn" + (helpOpen ? " btn--primary" : "")}
-          onClick={() => setHelpOpen((v) => !v)}
+          className={"btn" + (panel === "brand" ? " btn--primary" : "")}
+          onClick={() => toggle("brand")}
+          title="Apply a brand palette"
+        >
+          Brand
+        </button>
+        <button
+          className={"btn" + (panel === "commands" ? " btn--primary" : "")}
+          onClick={() => toggle("commands")}
           title="Show available commands"
         >
           Commands
@@ -85,7 +100,9 @@ export default function QuickEditBar({ style, onChange }: Props) {
         {msg && <span className={"quickedit__msg " + (msg.ok ? "ok" : "err")}>{msg.text}</span>}
       </div>
 
-      {helpOpen && (
+      {panel === "brand" && <BrandPanel style={style} onChange={onChange} />}
+
+      {panel === "commands" && (
         <div className="quickedit-help">
           <div className="qh-row">
             <span className="qh-key">Syntax</span>

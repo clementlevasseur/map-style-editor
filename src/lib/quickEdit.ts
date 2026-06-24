@@ -3,15 +3,17 @@ import { FONTS, GLYPHS_URL, shouldSwitchGlyphs } from "./fonts";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-// Lightweight, rule-based "quick edit": parse a short instruction (a color/font +
-// a target role) and apply it to the style. No AI — relies on the OpenMapTiles
-// layer vocabulary (source-layer) so role detection is reliable for these styles.
+// Lightweight, rule-based "quick edit": parse a short instruction (a color / font /
+// number + a target role) and apply it to the style. No AI — relies on the
+// OpenMapTiles layer vocabulary (source-layer) so role detection is reliable.
 
 export interface QuickEditResult {
   style?: StyleSpecification;
   summary?: string;
   error?: string;
 }
+
+export type RoleKey = "background" | "water" | "roads" | "land" | "buildings" | "labels" | "boundaries";
 
 const NAMED_COLORS: Record<string, string> = {
   white: "#ffffff", black: "#000000", grey: "#888888", gray: "#888888",
@@ -50,8 +52,6 @@ function detectFont(cmd: string): string | null {
 const sl = (l: any) => String(l["source-layer"] || "").toLowerCase();
 const lid = (l: any) => String(l.id || "").toLowerCase();
 
-type RoleKey = "background" | "water" | "roads" | "land" | "buildings" | "labels" | "boundaries";
-
 const ROLE_KEYWORDS: [RoleKey, RegExp][] = [
   ["water", /\b(water|eau|mer|sea|ocean|oc[eé]an|river|rivi[eè]re|lac|lake)\b/],
   ["roads", /\b(road|roads|route|routes|rue|rues|street|streets|highway|voirie|voie)\b/],
@@ -76,12 +76,48 @@ const ROLE_MATCH: Record<"water" | "roads" | "land" | "buildings" | "boundaries"
 };
 
 const COLOR_PROP: Record<string, string> = {
-  fill: "fill-color",
-  line: "line-color",
-  background: "background-color",
-  circle: "circle-color",
-  "fill-extrusion": "fill-extrusion-color",
+  fill: "fill-color", line: "line-color", background: "background-color",
+  circle: "circle-color", "fill-extrusion": "fill-extrusion-color",
 };
+const OPACITY_PROP: Record<string, string> = {
+  fill: "fill-opacity", line: "line-opacity", background: "background-opacity",
+  circle: "circle-opacity", symbol: "text-opacity", "fill-extrusion": "fill-extrusion-opacity",
+};
+
+/** Does this layer belong to the given role? */
+export function matchLayer(role: RoleKey, l: any): boolean {
+  if (role === "background") return l.type === "background";
+  if (role === "labels") return l.type === "symbol";
+  if (l.type === "symbol") return false;
+  const m = (ROLE_MATCH as any)[role];
+  return m ? m(l) : false;
+}
+
+/** Apply a color to all layers of a role (mutates `layers`). Returns the count. */
+export function colorRole(layers: any[], role: RoleKey, color: string): number {
+  let count = 0;
+  for (const l of layers) {
+    if (!matchLayer(role, l)) continue;
+    if (role === "roads" && /(casing|outline)/.test(lid(l))) continue; // keep road casings
+    const prop = role === "labels" ? "text-color" : COLOR_PROP[l.type];
+    if (!prop) continue;
+    l.paint = { ...(l.paint || {}), [prop]: color };
+    count++;
+  }
+  return count;
+}
+
+/** Read the current color of a role (first matching layer), if it is a plain string. */
+export function readRoleColor(layers: any[], role: RoleKey): string | undefined {
+  for (const l of layers) {
+    if (!matchLayer(role, l)) continue;
+    if (role === "roads" && /(casing|outline)/.test(lid(l))) continue;
+    const prop = role === "labels" ? "text-color" : COLOR_PROP[l.type];
+    const v = l.paint?.[prop];
+    if (typeof v === "string") return v;
+  }
+  return undefined;
+}
 
 export function runQuickEdit(style: StyleSpecification, raw: string): QuickEditResult {
   const cmd = raw.trim().toLowerCase();
@@ -89,56 +125,68 @@ export function runQuickEdit(style: StyleSpecification, raw: string): QuickEditR
 
   const next = structuredClone(style) as any;
   const layers: any[] = next.layers || [];
-  const color = detectColor(cmd);
-  const font = detectFont(cmd);
-  const wantsFont = /\b(font|police|typo|typeface)\b/.test(cmd);
+  const role = detectRole(cmd);
+  const numMatch = cmd.match(/(\d+(?:\.\d+)?)/);
+  const num = numMatch ? parseFloat(numMatch[1]) : undefined;
+  const hide = /\b(hide|masquer|masque|cache|cacher)\b/.test(cmd);
+  const show = /\b(show|afficher|affiche|montrer|montre)\b/.test(cmd);
 
-  // FONT — when a font is named, or the word "font" is used (and not a color command)
-  if (font && (wantsFont || !color)) {
-    let count = 0;
-    for (const l of layers) {
-      if (l.type !== "symbol") continue;
-      l.layout = { ...(l.layout || {}), "text-font": [font] };
-      count++;
-    }
-    if (!count) return { error: "No text layers to set the font on." };
+  // VISIBILITY
+  if (hide || show) {
+    if (!role) return { error: 'Which target? e.g. "hide buildings", "show water".' };
+    let c = 0;
+    for (const l of layers) if (matchLayer(role, l)) { l.layout = { ...(l.layout || {}), visibility: hide ? "none" : "visible" }; c++; }
+    if (!c) return { error: `No "${role}" layers found.` };
+    return { style: next, summary: `${hide ? "Hid" : "Showed"} ${c} ${role} layer${c > 1 ? "s" : ""}.` };
+  }
+
+  // OPACITY
+  if (/\b(opacity|opacit[eé])\b/.test(cmd) && num !== undefined) {
+    if (!role) return { error: 'Which target? e.g. "water opacity 0.5".' };
+    const v = Math.max(0, Math.min(1, num));
+    let c = 0;
+    for (const l of layers) if (matchLayer(role, l)) { const prop = OPACITY_PROP[l.type]; if (!prop) continue; l.paint = { ...(l.paint || {}), [prop]: v }; c++; }
+    if (!c) return { error: `No "${role}" layers found.` };
+    return { style: next, summary: `Set ${role} opacity to ${v} on ${c} layer${c > 1 ? "s" : ""}.` };
+  }
+
+  // WIDTH (line layers)
+  if (/\b(width|[eé]paisseur|thick|thin)\b/.test(cmd) && num !== undefined) {
+    const r = role ?? "roads";
+    let c = 0;
+    for (const l of layers) if (matchLayer(r, l) && l.type === "line") { l.paint = { ...(l.paint || {}), "line-width": num }; c++; }
+    if (!c) return { error: `No "${r}" line layers found.` };
+    return { style: next, summary: `Set ${r} width to ${num} on ${c} layer${c > 1 ? "s" : ""}.` };
+  }
+
+  // TEXT SIZE (labels)
+  if (/\b(size|taille)\b/.test(cmd) && num !== undefined) {
+    let c = 0;
+    for (const l of layers) if (l.type === "symbol") { l.layout = { ...(l.layout || {}), "text-size": num }; c++; }
+    if (!c) return { error: "No label layers found." };
+    return { style: next, summary: `Set label size to ${num} on ${c} layer${c > 1 ? "s" : ""}.` };
+  }
+
+  // FONT
+  const font = detectFont(cmd);
+  const color = detectColor(cmd);
+  const wantsFont = /\b(font|police|typo|typeface)\b/.test(cmd);
+  if (font && (wantsFont || (!color && num === undefined))) {
+    let c = 0;
+    for (const l of layers) if (l.type === "symbol") { l.layout = { ...(l.layout || {}), "text-font": [font] }; c++; }
+    if (!c) return { error: "No text layers to set the font on." };
     if (shouldSwitchGlyphs(next.glyphs)) next.glyphs = GLYPHS_URL;
-    return { style: next, summary: `Font set to “${font}” on ${count} label layer${count > 1 ? "s" : ""}.` };
+    return { style: next, summary: `Font set to “${font}” on ${c} label layer${c > 1 ? "s" : ""}.` };
   }
 
   // COLOR
   if (!color) {
     return {
-      error: "Didn't understand. Try: “water #0a7e8c”, “background #ffffff”, “labels #333”, “font Metropolis Bold”.",
+      error: 'Didn\'t understand. Try: "water #0a7e8c", "roads width 2", "hide buildings", "font Metropolis Bold".',
     };
   }
-  const role = detectRole(cmd) ?? "background"; // bare "color #xxx" → background
-
-  let count = 0;
-  if (role === "background") {
-    for (const l of layers) {
-      if (l.type !== "background") continue;
-      l.paint = { ...(l.paint || {}), "background-color": color };
-      count++;
-    }
-  } else if (role === "labels") {
-    for (const l of layers) {
-      if (l.type !== "symbol") continue;
-      l.paint = { ...(l.paint || {}), "text-color": color };
-      count++;
-    }
-  } else {
-    const match = ROLE_MATCH[role];
-    for (const l of layers) {
-      if (l.type === "symbol" || !match(l)) continue;
-      if (role === "roads" && /(casing|outline)/.test(lid(l))) continue; // keep road casings
-      const prop = COLOR_PROP[l.type];
-      if (!prop) continue;
-      l.paint = { ...(l.paint || {}), [prop]: color };
-      count++;
-    }
-  }
-
-  if (!count) return { error: `No “${role}” layers found to recolor.` };
-  return { style: next, summary: `Set ${role} color to ${color} on ${count} layer${count > 1 ? "s" : ""}.` };
+  const r = role ?? "background"; // bare "color #xxx" → background
+  const c = colorRole(layers, r, color);
+  if (!c) return { error: `No "${r}" layers found to recolor.` };
+  return { style: next, summary: `Set ${r} color to ${color} on ${c} layer${c > 1 ? "s" : ""}.` };
 }
