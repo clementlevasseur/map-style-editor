@@ -6,6 +6,7 @@ import StyleEditor from "./components/StyleEditor";
 import UiEditor from "./components/UiEditor";
 import ImagesPanel from "./components/ImagesPanel";
 import MapPreview from "./components/MapPreview";
+import QuickEditBar from "./components/QuickEditBar";
 import { clearSavedStyle, loadSavedStyle, saveStyle } from "./lib/persistence";
 import { fetchStyleText } from "./lib/styleLoader";
 import { DEFAULT_STYLE_URL, FALLBACK_STYLE } from "./lib/defaultStyle";
@@ -68,6 +69,7 @@ export default function App() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Toolbar onLoad={setText} currentText={text} onReset={handleReset} />
+      <QuickEditBar style={parsedStyle} onChange={handleStyleObjectChange} />
       <div style={{ flex: 1, minHeight: 0 }}>
         <PanelGroup direction="horizontal">
           <Panel defaultSize={42} minSize={20}>

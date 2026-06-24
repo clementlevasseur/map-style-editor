@@ -192,6 +192,97 @@ button {
   background: #343a45;
 }
 
+/* ---------- quick edit bar ---------- */
+.quickedit {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 12px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+}
+.quickedit__label {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.quickedit__msg {
+  font-size: 12px;
+  white-space: nowrap;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.quickedit__msg.ok {
+  color: var(--ok);
+}
+.quickedit__msg.err {
+  color: var(--warn);
+}
+.quickedit-help {
+  padding: 10px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px;
+}
+.qh-row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+.qh-key {
+  flex: 0 0 76px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding-top: 3px;
+}
+.qh-val {
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+.qh-val code,
+.qh-note code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--bg);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--text);
+}
+.qh-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.qh-chip {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  background: var(--elev);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.qh-chip:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.qh-note {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
 /* ---------- tabs ---------- */
 .tabs {
   display: flex;
