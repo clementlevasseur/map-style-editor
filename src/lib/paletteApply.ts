@@ -45,7 +45,15 @@ export function applyPaletteToLayers(layers: any[], pal: Palette): number {
     const [prop, color] = r;
     // Don't add text color to icon-only symbol layers.
     if (prop === "text-color" && !(l.layout?.["text-field"] || l.paint?.["text-color"])) continue;
-    l.paint = { ...(l.paint || {}), [prop]: color };
+    const paint = { ...(l.paint || {}), [prop]: color };
+    // Recolor secondary colors so they don't clash (e.g. a green fill outline).
+    if (l.type === "fill" && paint["fill-outline-color"] !== undefined) {
+      paint["fill-outline-color"] = adjustColor(color, -0.12);
+    }
+    if (l.type === "circle" && paint["circle-stroke-color"] !== undefined) {
+      paint["circle-stroke-color"] = adjustColor(color, -0.15);
+    }
+    l.paint = paint;
     n++;
   }
   return n;
