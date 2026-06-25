@@ -98,6 +98,19 @@ export function ImageIcon({ size = 18 }: { size?: number }) {
   );
 }
 
+export function SlidersIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="18" x2="20" y2="18" />
+      <circle cx="9" cy="6" r="2.2" fill="var(--panel)" />
+      <circle cx="15" cy="12" r="2.2" fill="var(--panel)" />
+      <circle cx="8" cy="18" r="2.2" fill="var(--panel)" />
+    </svg>
+  );
+}
+
 export function MoreIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

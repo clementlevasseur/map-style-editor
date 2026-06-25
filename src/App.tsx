@@ -8,7 +8,8 @@ import MapPreview from "./components/MapPreview";
 import QuickEditBar from "./components/QuickEditBar";
 import Toaster from "./components/Toaster";
 import BrandPanel from "./components/BrandPanel";
-import { CodeIcon, ImageIcon, LayersIcon, PaletteIcon } from "./components/icons";
+import ConfigurePanel from "./components/ConfigurePanel";
+import { CodeIcon, ImageIcon, LayersIcon, PaletteIcon, SlidersIcon } from "./components/icons";
 
 // Monaco is heavy and bundled locally — load the JSON editor on demand.
 const StyleEditor = lazy(() => import("./components/StyleEditor"));
@@ -25,8 +26,8 @@ export default function App() {
   const [text, setText] = useState<string>("");
   const [parsedStyle, setParsedStyle] = useState<StyleSpecification | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [section, setSection] = useState<"layers" | "palette" | "images" | "code">(
-    () => (localStorage.getItem("map-style-editor:section") as "layers" | "palette" | "images" | "code") || "layers",
+  const [section, setSection] = useState<"configure" | "layers" | "palette" | "images" | "code">(
+    () => (localStorage.getItem("map-style-editor:section") as never) || "configure",
   );
   const [past, setPast] = useState<string[]>([]);
   const [future, setFuture] = useState<string[]>([]);
@@ -41,6 +42,7 @@ export default function App() {
   }, [section]);
 
   const SECTIONS = [
+    { id: "configure", label: "Setup", icon: <SlidersIcon /> },
     { id: "layers", label: "Layers", icon: <LayersIcon /> },
     { id: "palette", label: "Palette", icon: <PaletteIcon /> },
     { id: "images", label: "Images", icon: <ImageIcon /> },
@@ -191,6 +193,7 @@ export default function App() {
                 ))}
               </nav>
               <div className="editor-panel">
+                {section === "configure" && <ConfigurePanel style={parsedStyle} onChange={handleStyleObjectChange} />}
                 {section === "layers" && <UiEditor style={parsedStyle} onChange={handleStyleObjectChange} />}
                 {section === "palette" && <BrandPanel style={parsedStyle} onChange={handleStyleObjectChange} />}
                 {section === "images" && <ImagesPanel style={parsedStyle} onChange={handleStyleObjectChange} />}
