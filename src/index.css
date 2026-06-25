@@ -517,6 +517,25 @@ button {
   gap: 8px;
   flex-wrap: wrap;
 }
+.density-end {
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+.config-row input[type="range"] {
+  appearance: none;
+  height: 4px;
+  border-radius: 3px;
+  background: var(--border-strong);
+  cursor: pointer;
+}
+.config-row input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
 
 /* ---------- brand palette panel ---------- */
 .brand-panel {

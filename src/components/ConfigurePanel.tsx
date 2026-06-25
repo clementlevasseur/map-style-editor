@@ -1,13 +1,12 @@
 import { useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
 import {
+  applyDensity,
   applyPreset,
   CATEGORIES,
   categoryStats,
   PRESETS,
-  setDensity,
   toggleCategory,
-  type Density,
 } from "../lib/categories";
 import { applyPalette, derivePalette } from "../lib/palette";
 import { runQuickEdit } from "../lib/quickEdit";
@@ -31,6 +30,7 @@ const LANGS: [string, string][] = [
 export default function ConfigurePanel({ style, onChange }: Props) {
   const [base, setBase] = useState("#3b6fe2");
   const [dark, setDark] = useState(false);
+  const [density, setDensityVal] = useState(100);
 
   if (!style) {
     return <div className="empty-note">Fix the JSON first to configure the map.</div>;
@@ -56,14 +56,25 @@ export default function ConfigurePanel({ style, onChange }: Props) {
       </section>
 
       <section className="config-section">
-        <div className="config-h">Detail</div>
-        <div className="seg">
-          {(["minimal", "balanced", "detailed"] as Density[]).map((d) => (
-            <button key={d} className="seg__btn" onClick={() => onChange(setDensity(style!, d))}>
-              {d[0].toUpperCase() + d.slice(1)}
-            </button>
-          ))}
+        <div className="config-h">Density — {density === 100 ? "full detail" : density >= 60 ? "balanced" : "sparse"}</div>
+        <div className="config-row">
+          <span className="density-end">sparse</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={density}
+            style={{ flex: 1 }}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setDensityVal(v);
+              onChange(applyDensity(style!, v));
+            }}
+          />
+          <span className="density-end">full</span>
         </div>
+        <div className="qh-note">Hides minor roads, places, POIs and street labels first.</div>
       </section>
 
       <section className="config-section">

@@ -68,21 +68,45 @@ export const PRESETS: Preset[] = [
   { key: "dark", label: "Dark", hidden: [], base: "#3b6fe2", dark: true },
 ];
 
-export type Density = "minimal" | "balanced" | "detailed";
-const DENSITY_HIDE: Record<Density, string[]> = {
-  minimal: ["poi", "street-labels", "transit", "buildings"],
-  balanced: ["poi", "street-labels"],
-  detailed: [],
-};
+// "Detail importance" of a layer (0–100, higher = kept longer). Returns null for
+// layers density shouldn't touch (water, land, buildings, boundaries, background).
+function detailScore(l: any): number | null {
+  const id = lid(l);
+  const isRoad = l.type !== "symbol" && (/transportation|aeroway/.test(sl(l)) || /(road|highway|street|bridge|tunnel)/.test(id));
+  if (isRoad) {
+    if (/motorway|trunk/.test(id)) return 95;
+    if (/primary/.test(id)) return 80;
+    if (/secondary/.test(id)) return 65;
+    if (/tertiary/.test(id)) return 52;
+    if (/(minor|residential|living|street)/.test(id)) return 38;
+    if (/(service|track|path|pedestrian|cycle|footway)/.test(id)) return 20;
+    return 50;
+  }
+  if (l.type === "symbol" && (/place/.test(sl(l)) || /(country|continent|state|region|city|capital|town|village|suburb|hamlet|neighbourhood|quarter|island)/.test(id))) {
+    if (/country|continent/.test(id)) return 98;
+    if (/state|region/.test(id)) return 88;
+    if (/city|capital/.test(id)) return 76;
+    if (/town/.test(id)) return 58;
+    if (/village/.test(id)) return 42;
+    if (/(suburb|neighbourhood|hamlet|quarter|island)/.test(id)) return 28;
+    return 55;
+  }
+  if (l.type === "symbol" && (/transportation_name/.test(sl(l)) || (/(road|street|highway)/.test(id) && /(name|label)/.test(id)))) return 36;
+  if (/poi/.test(sl(l)) || /poi/.test(id)) return 22;
+  return null;
+}
 
-/** Declutter the map: hide the noisier categories; "detailed" shows everything. */
-export function setDensity(style: StyleSpecification, level: Density): StyleSpecification {
+/**
+ * Fine density control (0 = sparse, 100 = full). Shows detail layers whose importance
+ * is at or above the cutoff; non-detail layers (water, land…) are left untouched.
+ */
+export function applyDensity(style: StyleSpecification, density: number): StyleSpecification {
   const next = structuredClone(style) as any;
-  const layers = next.layers || [];
-  const hide = DENSITY_HIDE[level];
-  for (const cat of CATEGORIES) {
-    if (hide.includes(cat.key)) setVisibility(layers, cat, false);
-    else if (level === "detailed") setVisibility(layers, cat, true);
+  const cutoff = 100 - density;
+  for (const l of next.layers || []) {
+    const s = detailScore(l);
+    if (s === null) continue;
+    l.layout = { ...(l.layout || {}), visibility: s >= cutoff ? "visible" : "none" };
   }
   return next;
 }
