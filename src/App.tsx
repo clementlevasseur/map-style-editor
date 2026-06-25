@@ -8,6 +8,7 @@ import MapPreview from "@/features/map/MapPreview";
 import QuickEditBar from "@/features/quick-edit/QuickEditBar";
 import BrandPanel from "@/features/palette/BrandPanel";
 import ConfigurePanel from "@/features/configurator/ConfigurePanel";
+import CommandPalette from "@/features/command-palette/CommandPalette";
 import Toaster from "@/shared/Toaster";
 import { CodeIcon, ImageIcon, LayersIcon, PaletteIcon, SlidersIcon } from "@/shared/icons";
 import { useStyleDocument } from "@/app/useStyleDocument";
@@ -38,12 +39,30 @@ export default function App() {
   );
   // A layer picked by clicking the map (n forces re-selection on repeat clicks).
   const [pickedLayer, setPickedLayer] = useState<{ id: string; n: number } | null>(null);
+  const [flyTarget, setFlyTarget] = useState<{ center: [number, number]; zoom: number; n: number } | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   function handlePickLayer(id: string) {
     setSection("layers");
     setPickedLayer((prev) => ({ id, n: (prev?.n ?? 0) + 1 }));
     toast(`Selected layer “${id}”`);
   }
+
+  function handleGoTo(center: [number, number], zoom: number) {
+    setFlyTarget((prev) => ({ center, zoom, n: (prev?.n ?? 0) + 1 }));
+  }
+
+  // ⌘K / Ctrl+K toggles the command palette.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     try {
@@ -85,6 +104,7 @@ export default function App() {
         canRedo={canRedo}
         styleName={(parsedStyle as { name?: string } | null)?.name ?? ""}
         onRename={(name) => parsedStyle && applyStyle({ ...parsedStyle, name } as StyleSpecification)}
+        onOpenPalette={() => setPaletteOpen(true)}
       />
       <QuickEditBar style={parsedStyle} onChange={applyStyle} contrastLow={contrastLow} />
       <div style={{ flex: 1, minHeight: 0 }}>
@@ -119,10 +139,22 @@ export default function App() {
           </Panel>
           <PanelResizeHandle className={"resize-handle " + (vertical ? "resize-handle--h" : "resize-handle--v")} />
           <Panel minSize={20}>
-            <MapPreview style={parsedStyle} onPickLayer={handlePickLayer} />
+            <MapPreview style={parsedStyle} onPickLayer={handlePickLayer} flyTo={flyTarget} />
           </Panel>
         </PanelGroup>
       </div>
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        style={parsedStyle}
+        onApplyStyle={applyStyle}
+        onGoTo={handleGoTo}
+        onSelectLayer={handlePickLayer}
+        onSection={setSection}
+        onUndo={undo}
+        onRedo={redo}
+        onReset={handleReset}
+      />
       <Toaster />
     </div>
   );

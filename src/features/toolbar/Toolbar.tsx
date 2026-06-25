@@ -22,9 +22,10 @@ interface ToolbarProps {
   canRedo: boolean;
   styleName: string;
   onRename: (name: string) => void;
+  onOpenPalette: () => void;
 }
 
-export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, canUndo, canRedo, styleName, onRename }: ToolbarProps) {
+export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, canUndo, canRedo, styleName, onRename, onOpenPalette }: ToolbarProps) {
   const [busy, setBusy] = useState(false);
 
   function handleTemplate(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -124,6 +125,10 @@ export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, 
           </optgroup>
         ))}
       </select>
+
+      <button className="btn cmdk-trigger" onClick={onOpenPalette} title="Command palette (Ctrl/Cmd + K)">
+        Search<kbd>⌘K</kbd>
+      </button>
 
       <div className="toolbar__spacer" />
 

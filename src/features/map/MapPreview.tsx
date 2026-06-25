@@ -3,6 +3,7 @@ import maplibregl, { type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { registerMapProtocols } from "@/lib/mapProtocols";
 import { hydrateMapImages } from "@/lib/styleImages";
+import { PLACES } from "@/lib/places";
 
 registerMapProtocols();
 
@@ -11,17 +12,9 @@ interface MapPreviewProps {
   style: StyleSpecification | null;
   /** Called with the style layer id of the topmost feature clicked on the map. */
   onPickLayer?: (layerId: string) => void;
+  /** Fly the map to a location (n bumps to re-trigger on repeat). */
+  flyTo?: { center: [number, number]; zoom: number; n: number } | null;
 }
-
-const PLACES: { name: string; center: [number, number]; zoom: number }[] = [
-  { name: "Paris", center: [2.35, 48.85], zoom: 11 },
-  { name: "London", center: [-0.12, 51.5], zoom: 11 },
-  { name: "New York", center: [-74.0, 40.71], zoom: 11 },
-  { name: "Tokyo", center: [139.7, 35.68], zoom: 11 },
-  { name: "San Francisco", center: [-122.43, 37.77], zoom: 12 },
-  { name: "Alps (terrain)", center: [7.66, 45.97], zoom: 9 },
-  { name: "World", center: [10, 30], zoom: 1.6 },
-];
 
 interface ViewState {
   lng: number;
@@ -46,7 +39,7 @@ function saveView(v: ViewState): void {
   }
 }
 
-export default function MapPreview({ style, onPickLayer }: MapPreviewProps) {
+export default function MapPreview({ style, onPickLayer, flyTo }: MapPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [view, setView] = useState<ViewState>(() => loadView() ?? { lng: 2.35, lat: 48.85, zoom: 11 });
@@ -143,6 +136,10 @@ export default function MapPreview({ style, onPickLayer }: MapPreviewProps) {
       });
     }
   }, [style]);
+
+  useEffect(() => {
+    if (flyTo) mapRef.current?.flyTo({ center: flyTo.center, zoom: flyTo.zoom });
+  }, [flyTo]);
 
   return (
     <div className="map-wrap">
