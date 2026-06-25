@@ -16,7 +16,6 @@ import { useHistory } from "@/app/useHistory";
 import { useMediaQuery } from "@/app/useMediaQuery";
 import { clearSavedStyle } from "@/lib/persistence";
 import { checkLabelContrast } from "@/lib/contrast";
-import { toast } from "@/lib/toast";
 
 // Monaco is heavy and bundled locally — load the JSON editor on demand.
 const StyleEditor = lazy(() => import("@/features/code/StyleEditor"));
@@ -37,15 +36,22 @@ export default function App() {
   const [section, setSection] = useState<SectionId>(
     () => (localStorage.getItem("map-style-editor:section") as SectionId) || "configure",
   );
-  // A layer picked by clicking the map (n forces re-selection on repeat clicks).
+  // A layer picked (map click or palette); n forces re-selection on repeat picks.
   const [pickedLayer, setPickedLayer] = useState<{ id: string; n: number } | null>(null);
+  const [inspect, setInspect] = useState<{ layerId: string; properties: Record<string, unknown>; n: number } | null>(null);
   const [flyTarget, setFlyTarget] = useState<{ center: [number, number]; zoom: number; n: number } | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
-  function handlePickLayer(id: string) {
+  function selectLayerById(id: string) {
     setSection("layers");
     setPickedLayer((prev) => ({ id, n: (prev?.n ?? 0) + 1 }));
-    toast(`Selected layer “${id}”`);
+    setInspect(null);
+  }
+
+  function handleMapPick(pick: { layerId: string; properties: Record<string, unknown> }) {
+    setSection("layers");
+    setPickedLayer((prev) => ({ id: pick.layerId, n: (prev?.n ?? 0) + 1 }));
+    setInspect((prev) => ({ layerId: pick.layerId, properties: pick.properties, n: (prev?.n ?? 0) + 1 }));
   }
 
   function handleGoTo(center: [number, number], zoom: number) {
@@ -126,7 +132,9 @@ export default function App() {
               </nav>
               <div className="editor-panel">
                 {section === "configure" && <ConfigurePanel style={parsedStyle} onChange={applyStyle} />}
-                {section === "layers" && <UiEditor style={parsedStyle} onChange={applyStyle} selectLayer={pickedLayer} />}
+                {section === "layers" && (
+                  <UiEditor style={parsedStyle} onChange={applyStyle} selectLayer={pickedLayer} inspect={inspect} />
+                )}
                 {section === "palette" && <BrandPanel style={parsedStyle} onChange={applyStyle} />}
                 {section === "images" && <ImagesPanel style={parsedStyle} onChange={applyStyle} />}
                 {section === "code" && (
@@ -139,7 +147,7 @@ export default function App() {
           </Panel>
           <PanelResizeHandle className={"resize-handle " + (vertical ? "resize-handle--h" : "resize-handle--v")} />
           <Panel minSize={20}>
-            <MapPreview style={parsedStyle} onPickLayer={handlePickLayer} flyTo={flyTarget} />
+            <MapPreview style={parsedStyle} onPick={handleMapPick} flyTo={flyTarget} />
           </Panel>
         </PanelGroup>
       </div>
@@ -149,7 +157,7 @@ export default function App() {
         style={parsedStyle}
         onApplyStyle={applyStyle}
         onGoTo={handleGoTo}
-        onSelectLayer={handlePickLayer}
+        onSelectLayer={selectLayerById}
         onSection={setSection}
         onUndo={undo}
         onRedo={redo}

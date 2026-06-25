@@ -33,6 +33,8 @@ interface Props {
   onChange: (style: StyleSpecification) => void;
   /** A layer to select (e.g. picked by clicking the map); `n` bumps on each pick. */
   selectLayer?: { id: string; n: number } | null;
+  /** The feature clicked on the map (its attributes), for the inspector. */
+  inspect?: { layerId: string; properties: Record<string, unknown>; n: number } | null;
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -52,7 +54,14 @@ function typeColor(t: string): string {
   return TYPE_COLORS[t] ?? "#8a8f99";
 }
 
-export default function UiEditor({ style, onChange, selectLayer }: Props) {
+// Show useful attributes (class, subclass…) before the flood of localized names.
+function inspectRank(key: string): number {
+  if (key.startsWith("name:")) return 3;
+  if (key === "name" || key.startsWith("name_")) return 2;
+  return /^(class|subclass|type|kind|brunnel|layer|rank)$/.test(key) ? 0 : 1;
+}
+
+export default function UiEditor({ style, onChange, selectLayer, inspect }: Props) {
   const [selected, setSelected] = useState(0);
   const [filter, setFilter] = useState("");
   const [adding, setAdding] = useState(false);
@@ -135,6 +144,23 @@ export default function UiEditor({ style, onChange, selectLayer }: Props) {
       if (!l) return;
       if (value === undefined || value === "") delete l[name];
       else l[name] = value;
+    });
+  }
+
+  function onlyWhere(key: string, value: unknown) {
+    const eq = ["==", ["get", key], value];
+    commit((s) => {
+      const l = (s.layers as any[])[idx];
+      if (!l) return;
+      const f = l.filter;
+      l.filter = !f ? eq : Array.isArray(f) && f[0] === "all" ? [...f, eq] : ["all", f, eq];
+    });
+  }
+
+  function clearFilter() {
+    commit((s) => {
+      const l = (s.layers as any[])[idx];
+      if (l) delete l.filter;
     });
   }
 
@@ -348,6 +374,33 @@ export default function UiEditor({ style, onChange, selectLayer }: Props) {
                 </button>
               </div>
             </div>
+
+            {inspect && inspect.layerId === layer.id && (
+              <Section title="Clicked feature">
+                <div className="inspect">
+                  {Object.entries(inspect.properties)
+                    .filter(([, v]) => v !== null && typeof v !== "object")
+                    .sort(([a], [b]) => inspectRank(a) - inspectRank(b))
+                    .map(([k, v]) => (
+                      <div className="inspect__row" key={k}>
+                        <span className="inspect__key">{k}</span>
+                        <code className="inspect__val" title={String(v)}>{String(v)}</code>
+                        <button className="btn inspect__only" title={`Show only ${k} = ${v}`} onClick={() => onlyWhere(k, v)}>
+                          Only
+                        </button>
+                      </div>
+                    ))}
+                  {Object.keys(inspect.properties).length === 0 && (
+                    <div className="inspect__empty">This feature has no attributes.</div>
+                  )}
+                  {layer.filter !== undefined && (
+                    <button className="btn inspect__clear" title="Removes every filter on this layer (undoable)" onClick={clearFilter}>
+                      Remove all filters
+                    </button>
+                  )}
+                </div>
+              </Section>
+            )}
 
             <Section title="General">
               {layer.type !== "background" && (

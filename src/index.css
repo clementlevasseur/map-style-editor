@@ -445,6 +445,50 @@ button {
   color: var(--text-faint);
 }
 
+/* ---------- clicked-feature inspector ---------- */
+.inspect {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.inspect__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.inspect__key {
+  flex: 0 0 38%;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inspect__val {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inspect__only {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  font-size: 11px;
+}
+.inspect__clear {
+  margin-top: 6px;
+  align-self: flex-start;
+  font-size: 11.5px;
+}
+.inspect__empty {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
 /* ---------- configure panel ---------- */
 .config-panel {
   height: 100%;

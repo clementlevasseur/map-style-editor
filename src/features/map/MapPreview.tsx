@@ -10,8 +10,8 @@ registerMapProtocols();
 interface MapPreviewProps {
   /** Last valid parsed style. Applied live via setStyle({ diff: true }). */
   style: StyleSpecification | null;
-  /** Called with the style layer id of the topmost feature clicked on the map. */
-  onPickLayer?: (layerId: string) => void;
+  /** Called with the topmost feature clicked on the map (layer + its attributes). */
+  onPick?: (pick: { layerId: string; properties: Record<string, unknown> }) => void;
   /** Fly the map to a location (n bumps to re-trigger on repeat). */
   flyTo?: { center: [number, number]; zoom: number; n: number } | null;
 }
@@ -39,7 +39,7 @@ function saveView(v: ViewState): void {
   }
 }
 
-export default function MapPreview({ style, onPickLayer, flyTo }: MapPreviewProps) {
+export default function MapPreview({ style, onPick, flyTo }: MapPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [view, setView] = useState<ViewState>(() => loadView() ?? { lng: 2.35, lat: 48.85, zoom: 11 });
@@ -55,10 +55,10 @@ export default function MapPreview({ style, onPickLayer, flyTo }: MapPreviewProp
   }
 
   // Keep the latest callback for the once-registered click handler.
-  const pickRef = useRef<typeof onPickLayer>(onPickLayer);
+  const pickRef = useRef<typeof onPick>(onPick);
   useEffect(() => {
-    pickRef.current = onPickLayer;
-  }, [onPickLayer]);
+    pickRef.current = onPick;
+  }, [onPick]);
 
   // Init map once.
   useEffect(() => {
@@ -80,10 +80,10 @@ export default function MapPreview({ style, onPickLayer, flyTo }: MapPreviewProp
       const c = map.getCenter();
       saveView({ lng: c.lng, lat: c.lat, zoom: map.getZoom() });
     });
-    // Click a feature → select the style layer that drew it.
+    // Click a feature → select the layer that drew it and expose its attributes.
     map.on("click", (e) => {
-      const feats = map.queryRenderedFeatures(e.point);
-      if (feats.length) pickRef.current?.(feats[0].layer.id);
+      const f = map.queryRenderedFeatures(e.point)[0];
+      if (f) pickRef.current?.({ layerId: f.layer.id, properties: f.properties ?? {} });
     });
     map.getCanvas().style.cursor = "default";
     mapRef.current = map;
