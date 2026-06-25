@@ -1,8 +1,7 @@
-import { useRef, useState } from "react";
-import { downloadStyle, fetchStyleText, readFileText } from "../lib/styleLoader";
-import { DEFAULT_STYLE_URL } from "../lib/defaultStyle";
+import { useState } from "react";
+import { downloadStyle } from "../lib/styleLoader";
 import { TEMPLATES, templatesByGroup } from "../lib/templates";
-import { getImages } from "../lib/styleImages";
+import { getImages, getSpriteUrl } from "../lib/styleImages";
 import { buildSprite, downloadBlob } from "../lib/sprite";
 import { createZip } from "../lib/zip";
 import { buildShareUrl } from "../lib/share";
@@ -10,9 +9,8 @@ import { toast } from "../lib/toast";
 import Logo from "./Logo";
 import SavedMenu from "./SavedMenu";
 import SnippetMenu from "./SnippetMenu";
-import { GitHubIcon, RedoIcon, ShareIcon, UndoIcon } from "./icons";
-
-const REPO_URL = "https://github.com/clementlevasseur/map-style-editor";
+import MoreMenu from "./MoreMenu";
+import { RedoIcon, ShareIcon, UndoIcon } from "./icons";
 
 interface ToolbarProps {
   onLoad: (text: string) => void;
@@ -22,29 +20,14 @@ interface ToolbarProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  styleName: string;
+  onRename: (name: string) => void;
 }
 
-export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, canUndo, canRedo }: ToolbarProps) {
-  const [url, setUrl] = useState(DEFAULT_STYLE_URL);
+export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, canUndo, canRedo, styleName, onRename }: ToolbarProps) {
   const [busy, setBusy] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
-  async function handleLoadUrl() {
-    setBusy(true);
-    try {
-      onLoad(await fetchStyleText(url));
-    } catch (e) {
-      toast(
-        `Failed to load the URL: ${e instanceof Error ? e.message : e}. ` +
-          "The style/tile server may not allow CORS.",
-        "error",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleTemplate(e: React.ChangeEvent<HTMLSelectElement>) {
+  function handleTemplate(e: React.ChangeEvent<HTMLSelectElement>) {
     const tpl = TEMPLATES.find((t) => t.id === e.target.value);
     e.target.value = "";
     if (!tpl) return;
@@ -53,17 +36,15 @@ export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, 
       return;
     }
     setBusy(true);
-    try {
-      onLoad(await fetchStyleText(tpl.url!));
-    } catch (err) {
-      toast(`Failed to load the template: ${err instanceof Error ? err.message : err}`, "error");
-    } finally {
-      setBusy(false);
-    }
+    import("../lib/styleLoader")
+      .then(({ fetchStyleText }) => fetchStyleText(tpl.url!))
+      .then(onLoad)
+      .catch((err) => toast(`Failed to load the template: ${err instanceof Error ? err.message : err}`, "error"))
+      .finally(() => setBusy(false));
   }
 
-  // Export: bundle style.json + a generated sprite into a zip when the style has
-  // images; plain style.json otherwise.
+  // Export: bundle style.json + a generated sprite (referencing it) into a zip when
+  // the style has images; plain style.json otherwise.
   async function handleExport() {
     let style: unknown;
     try {
@@ -79,8 +60,10 @@ export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, 
     setBusy(true);
     try {
       const sprite = await buildSprite(style as never);
+      const spriteUrl = getSpriteUrl(style as never) || "sprite";
+      const exportStyle = { ...(style as Record<string, unknown>), sprite: spriteUrl };
       const enc = new TextEncoder();
-      const files = [{ name: "style.json", data: enc.encode(currentText) }];
+      const files = [{ name: "style.json", data: enc.encode(JSON.stringify(exportStyle, null, 2)) }];
       if (sprite) {
         files.push({ name: "sprite.json", data: enc.encode(sprite.json) });
         files.push({ name: "sprite.png", data: new Uint8Array(await sprite.png.arrayBuffer()) });
@@ -100,7 +83,6 @@ export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, 
         await navigator.clipboard.writeText(link);
         toast("Share link copied to clipboard." + note, "success");
       } catch {
-        // Clipboard blocked (permissions / non-secure context) — offer manual copy.
         prompt("Copy this share link:" + note, link);
       }
     } catch (e) {
@@ -110,23 +92,17 @@ export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, 
     }
   }
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      onLoad(await readFileText(file));
-    } catch (err) {
-      toast(`Failed to read the file: ${err instanceof Error ? err.message : err}`, "error");
-    } finally {
-      e.target.value = "";
-    }
-  }
-
   return (
     <div className="toolbar">
       <div className="toolbar__brand">
         <Logo size={20} />
-        <span>Map Style Editor</span>
+        <input
+          className="toolbar__name"
+          value={styleName}
+          placeholder="untitled style"
+          title="Style name"
+          onChange={(e) => onRename(e.target.value)}
+        />
       </div>
 
       <button className="btn btn--icon" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
@@ -136,7 +112,7 @@ export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, 
         <RedoIcon />
       </button>
 
-      <select className="select" style={{ width: "auto" }} value="" onChange={handleTemplate} title="Load a preset style">
+      <select className="select" style={{ width: "auto" }} value="" onChange={handleTemplate} disabled={busy} title="Open a preset style">
         <option value="">Templates…</option>
         {templatesByGroup().map((g) => (
           <optgroup key={g.group} label={g.group}>
@@ -149,38 +125,17 @@ export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, 
         ))}
       </select>
 
-      <div className="url-field">
-        <input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="MapLibre style URL…"
-          onKeyDown={(e) => e.key === "Enter" && handleLoadUrl()}
-        />
-        <button onClick={handleLoadUrl} disabled={busy}>
-          {busy ? "…" : "Load"}
-        </button>
-      </div>
-
       <div className="toolbar__spacer" />
 
       <SavedMenu currentText={currentText} onLoad={onLoad} />
-      <button className="btn" onClick={() => fileRef.current?.click()}>
-        Import…
-      </button>
-      <input ref={fileRef} type="file" accept=".json,application/json" onChange={handleFile} style={{ display: "none" }} />
-      <button className="btn btn--primary" onClick={handleExport} disabled={busy}>
-        Export
-      </button>
+      <SnippetMenu />
       <button className="btn" onClick={handleShare} disabled={busy} title="Copy a shareable link">
         <ShareIcon /> Share
       </button>
-      <SnippetMenu />
-      <button className="btn" onClick={onReset} title="Back to the default style">
-        Reset
+      <button className="btn btn--primary" onClick={handleExport} disabled={busy}>
+        Export
       </button>
-      <a className="btn btn--icon" href={REPO_URL} target="_blank" rel="noopener noreferrer" title="View on GitHub">
-        <GitHubIcon />
-      </a>
+      <MoreMenu onLoad={onLoad} onReset={onReset} />
     </div>
   );
 }

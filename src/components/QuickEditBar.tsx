@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
 import { runQuickEdit } from "../lib/quickEdit";
 import { useDismiss } from "../lib/useDismiss";
-import BrandPanel from "./BrandPanel";
 
 interface Props {
   style: StyleSpecification | null;
@@ -24,7 +23,11 @@ const EXAMPLES: { group: string; items: string[] }[] = [
   },
   {
     group: "Size & more",
-    items: ["roads width 2", "water opacity 0.6", "labels size 14", "hide buildings", "show water"],
+    items: ["roads width 2", "water opacity 0.6", "labels size 14", "hide buildings", "darken water"],
+  },
+  {
+    group: "Labels",
+    items: ["language fr", "language en", "language local"],
   },
   {
     group: "Fonts",
@@ -32,7 +35,7 @@ const EXAMPLES: { group: string; items: string[] }[] = [
   },
 ];
 
-type PanelKind = "none" | "commands" | "brand";
+type PanelKind = "none" | "commands";
 
 export default function QuickEditBar({ style, onChange, contrastLow }: Props) {
   const [cmd, setCmd] = useState("");
@@ -78,6 +81,7 @@ export default function QuickEditBar({ style, onChange, contrastLow }: Props) {
           style={{ flex: 1 }}
           placeholder={'e.g. "water #0a7e8c", "background #fff", "labels #333", "font Metropolis Bold"'}
           value={cmd}
+          onFocus={() => setPanel("commands")}
           onChange={(e) => {
             setCmd(e.target.value);
             if (msg) setMsg(null);
@@ -86,13 +90,6 @@ export default function QuickEditBar({ style, onChange, contrastLow }: Props) {
         />
         <button className="btn" onClick={() => run()}>
           Apply
-        </button>
-        <button
-          className={"btn" + (panel === "brand" ? " btn--primary" : "")}
-          onClick={() => toggle("brand")}
-          title="Apply a brand palette"
-        >
-          Brand
         </button>
         <button
           className={"btn" + (panel === "commands" ? " btn--primary" : "")}
@@ -108,8 +105,6 @@ export default function QuickEditBar({ style, onChange, contrastLow }: Props) {
           </span>
         )}
       </div>
-
-      {panel === "brand" && <BrandPanel style={style} onChange={onChange} />}
 
       {panel === "commands" && (
         <div className="quickedit-help">

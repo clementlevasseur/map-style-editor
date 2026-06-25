@@ -215,6 +215,35 @@ export function runQuickEdit(style: StyleSpecification, raw: string): QuickEditR
     return { style: next, summary: `Adjusted ${role ?? "map"} on ${c} layer${c > 1 ? "s" : ""}.` };
   }
 
+  // LANGUAGE — rewrite text-field on label layers to a given name:<lang>
+  if (/\b(language|lang|langue)\b/.test(cmd)) {
+    const LANGS: Record<string, string> = {
+      en: "en", english: "en", anglais: "en",
+      fr: "fr", french: "fr", francais: "fr", "français": "fr",
+      de: "de", german: "de", allemand: "de",
+      es: "es", spanish: "es", espagnol: "es",
+      it: "it", italian: "it", italien: "it",
+      pt: "pt", ru: "ru", zh: "zh", ja: "ja", ar: "ar", nl: "nl",
+      local: "", "défaut": "", default: "", natif: "",
+    };
+    let code: string | null = null;
+    for (const k of Object.keys(LANGS).sort((a, b) => b.length - a.length)) {
+      if (new RegExp(`\\b${k}\\b`).test(cmd)) { code = LANGS[k]; break; }
+    }
+    if (code !== null) {
+      const tf = code ? ["coalesce", ["get", `name:${code}`], ["get", "name"]] : ["get", "name"];
+      let c = 0;
+      for (const l of layers) {
+        if (l.type === "symbol" && l.layout && "text-field" in l.layout) {
+          l.layout = { ...l.layout, "text-field": tf };
+          c++;
+        }
+      }
+      if (!c) return { error: "No label layers found." };
+      return { style: next, summary: `Labels set to ${code || "local"} on ${c} layer${c > 1 ? "s" : ""}.` };
+    }
+  }
+
   // FONT
   const font = detectFont(cmd);
   const color = detectColor(cmd);

@@ -77,18 +77,6 @@ export default function UiEditor({ style, onChange }: Props) {
   // source-layer only applies to vector tilesets (or unknown/missing sources).
   const showSourceLayer =
     layer && layer.type !== "background" && (currentSourceType === "vector" || currentSourceType === undefined);
-  // Suggest source-layer values already used by sibling layers on the same source.
-  const siblingSourceLayers = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          layers
-            .filter((l) => l.source === layer?.source && l["source-layer"])
-            .map((l) => l["source-layer"] as string),
-        ),
-      ),
-    [layers, layer?.source],
-  );
   // Source-layers already used anywhere in the style — pick-list for new layers.
   const usedSourceLayers = useMemo(
     () => (Array.from(new Set(layers.map((l) => l["source-layer"]).filter(Boolean))) as string[]).sort(),
@@ -291,18 +279,18 @@ export default function UiEditor({ style, onChange }: Props) {
                   </div>
                   <div className="addlayer__row">
                     <label>Source layer</label>
-                    <input
-                      className="input"
-                      list="nl-srclayers"
-                      placeholder="e.g. water, transportation…"
+                    <select
+                      className="select"
                       value={nl.sourceLayer}
                       onChange={(e) => setNl((v) => ({ ...v, sourceLayer: e.target.value }))}
-                    />
-                    <datalist id="nl-srclayers">
+                    >
+                      <option value="">(choose…)</option>
                       {usedSourceLayers.map((s) => (
-                        <option key={s} value={s} />
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
                       ))}
-                    </datalist>
+                    </select>
                   </div>
                 </>
               )}
@@ -378,17 +366,21 @@ export default function UiEditor({ style, onChange }: Props) {
                   doc="source-layer"
                   help="For vector tilesets: which layer inside the tileset to render (e.g. water, roads, building)."
                 >
-                  <input
-                    className="input"
-                    list={`sl-${idx}`}
+                  <select
+                    className="select"
                     value={layer["source-layer"] ?? ""}
-                    onChange={(e) => updateField("source-layer", e.target.value)}
-                  />
-                  <datalist id={`sl-${idx}`}>
-                    {siblingSourceLayers.map((v) => (
-                      <option key={v} value={v} />
+                    onChange={(e) => updateField("source-layer", e.target.value || undefined)}
+                  >
+                    <option value="">(none)</option>
+                    {usedSourceLayers.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
                     ))}
-                  </datalist>
+                    {layer["source-layer"] && !usedSourceLayers.includes(layer["source-layer"]) && (
+                      <option value={layer["source-layer"]}>{layer["source-layer"]}</option>
+                    )}
+                  </select>
                 </Field>
               )}
               <div className="prop-grid">

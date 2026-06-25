@@ -7,6 +7,8 @@ import ImagesPanel from "./components/ImagesPanel";
 import MapPreview from "./components/MapPreview";
 import QuickEditBar from "./components/QuickEditBar";
 import Toaster from "./components/Toaster";
+import BrandPanel from "./components/BrandPanel";
+import { CodeIcon, ImageIcon, LayersIcon, PaletteIcon } from "./components/icons";
 
 // Monaco is heavy and bundled locally — load the JSON editor on demand.
 const StyleEditor = lazy(() => import("./components/StyleEditor"));
@@ -23,8 +25,8 @@ export default function App() {
   const [text, setText] = useState<string>("");
   const [parsedStyle, setParsedStyle] = useState<StyleSpecification | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"ui" | "json" | "images">(
-    () => (localStorage.getItem("map-style-editor:tab") as "ui" | "json" | "images") || "ui",
+  const [section, setSection] = useState<"layers" | "palette" | "images" | "code">(
+    () => (localStorage.getItem("map-style-editor:section") as "layers" | "palette" | "images" | "code") || "layers",
   );
   const [past, setPast] = useState<string[]>([]);
   const [future, setFuture] = useState<string[]>([]);
@@ -32,11 +34,18 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem("map-style-editor:tab", tab);
+      localStorage.setItem("map-style-editor:section", section);
     } catch {
       /* ignore */
     }
-  }, [tab]);
+  }, [section]);
+
+  const SECTIONS = [
+    { id: "layers", label: "Layers", icon: <LayersIcon /> },
+    { id: "palette", label: "Palette", icon: <PaletteIcon /> },
+    { id: "images", label: "Images", icon: <ImageIcon /> },
+    { id: "code", label: "Code", icon: <CodeIcon size={18} /> },
+  ] as const;
 
   // Stack editor/map vertically on narrow screens.
   useEffect(() => {
@@ -160,31 +169,36 @@ export default function App() {
         onRedo={redo}
         canUndo={past.length > 0}
         canRedo={future.length > 0}
+        styleName={(parsedStyle as { name?: string } | null)?.name ?? ""}
+        onRename={(name) => parsedStyle && handleStyleObjectChange({ ...parsedStyle, name } as StyleSpecification)}
       />
       <QuickEditBar style={parsedStyle} onChange={handleStyleObjectChange} contrastLow={!!contrast?.low} />
       <div style={{ flex: 1, minHeight: 0 }}>
         <PanelGroup direction={vertical ? "vertical" : "horizontal"}>
-          <Panel defaultSize={42} minSize={20}>
-            <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-              <div className="tabs">
-                <button className={"tab" + (tab === "ui" ? " tab--active" : "")} onClick={() => setTab("ui")}>
-                  UI
-                </button>
-                <button className={"tab" + (tab === "json" ? " tab--active" : "")} onClick={() => setTab("json")}>
-                  JSON
-                </button>
-                <button className={"tab" + (tab === "images" ? " tab--active" : "")} onClick={() => setTab("images")}>
-                  Images
-                </button>
-              </div>
-              <div style={{ flex: 1, minHeight: 0 }}>
-                {tab === "ui" && <UiEditor style={parsedStyle} onChange={handleStyleObjectChange} />}
-                {tab === "json" && (
+          <Panel defaultSize={44} minSize={22}>
+            <div className="editor-pane">
+              <nav className="rail">
+                {SECTIONS.map((s) => (
+                  <button
+                    key={s.id}
+                    className={"rail-btn" + (section === s.id ? " rail-btn--active" : "")}
+                    title={s.label}
+                    onClick={() => setSection(s.id)}
+                  >
+                    {s.icon}
+                    <span className="rail-btn__label">{s.label}</span>
+                  </button>
+                ))}
+              </nav>
+              <div className="editor-panel">
+                {section === "layers" && <UiEditor style={parsedStyle} onChange={handleStyleObjectChange} />}
+                {section === "palette" && <BrandPanel style={parsedStyle} onChange={handleStyleObjectChange} />}
+                {section === "images" && <ImagesPanel style={parsedStyle} onChange={handleStyleObjectChange} />}
+                {section === "code" && (
                   <Suspense fallback={<div className="empty-note">Loading editor…</div>}>
                     <StyleEditor value={text} onChange={setText} error={error} />
                   </Suspense>
                 )}
-                {tab === "images" && <ImagesPanel style={parsedStyle} onChange={handleStyleObjectChange} />}
               </div>
             </div>
           </Panel>

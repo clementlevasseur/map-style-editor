@@ -50,6 +50,14 @@ describe("runQuickEdit", () => {
     expect(parseInt(bg.slice(1, 3), 16)).toBeLessThan(80);
   });
 
+  it("sets the label language via text-field", () => {
+    const s = style();
+    s.layers.push({ id: "place", type: "symbol", layout: { "text-field": ["get", "name"] } });
+    const r = runQuickEdit(s, "language fr");
+    const tf = (r.style as any).layers.find((l: any) => l.id === "place").layout["text-field"];
+    expect(JSON.stringify(tf)).toContain("name:fr");
+  });
+
   it("reports an error on gibberish", () => {
     expect(runQuickEdit(style(), "florp").error).toBeTruthy();
   });
