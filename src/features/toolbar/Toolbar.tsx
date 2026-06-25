@@ -10,7 +10,9 @@ import Logo from "@/shared/Logo";
 import SavedMenu from "./SavedMenu";
 import SnippetMenu from "./SnippetMenu";
 import MoreMenu from "./MoreMenu";
-import { RedoIcon, ShareIcon, UndoIcon } from "@/shared/icons";
+import { RedoIcon, SearchIcon, ShareIcon, UndoIcon } from "@/shared/icons";
+
+const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 interface ToolbarProps {
   onLoad: (text: string) => void;
@@ -126,8 +128,12 @@ export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, 
         ))}
       </select>
 
-      <button className="btn cmdk-trigger" onClick={onOpenPalette} title="Command palette (Ctrl/Cmd + K)">
-        Search<kbd>⌘K</kbd>
+      <button className="cmdk-trigger" onClick={onOpenPalette} title="Command palette">
+        <span className="cmdk-trigger__label">
+          <SearchIcon />
+          Search
+        </span>
+        <kbd>{IS_MAC ? "⌘K" : "Ctrl K"}</kbd>
       </button>
 
       <div className="toolbar__spacer" />
