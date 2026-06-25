@@ -1,6 +1,7 @@
 import type { StyleSpecification } from "maplibre-gl";
-import { colorRole, readRoleColor, type RoleKey } from "./quickEdit";
+import { readRoleColor, type RoleKey } from "./quickEdit";
 import { DEFAULT_PALETTE, normalizeHex, isHex, PALETTE_ROLES, type Palette } from "./color";
+import { applyPaletteToLayers } from "./paletteApply";
 
 export { DEFAULT_PALETTE, PALETTE_ROLES, derivePalette } from "./color";
 export type { Palette, PaletteRole } from "./color";
@@ -16,11 +17,9 @@ export function readPalette(style: StyleSpecification): Palette {
   return out;
 }
 
-/** Apply every role color across the style. */
+/** Apply the palette across the whole style (every colored layer). */
 export function applyPalette(style: StyleSpecification, pal: Palette): { style: StyleSpecification; summary: string } {
   const next = structuredClone(style) as any;
-  const layers: any[] = next.layers || [];
-  let total = 0;
-  for (const role of PALETTE_ROLES) total += colorRole(layers, role as RoleKey, pal[role]);
+  const total = applyPaletteToLayers(next.layers || [], pal);
   return { style: next, summary: `Palette applied to ${total} layer${total > 1 ? "s" : ""}.` };
 }

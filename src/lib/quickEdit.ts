@@ -1,6 +1,7 @@
 import type { StyleSpecification } from "maplibre-gl";
 import { FONTS, GLYPHS_URL, shouldSwitchGlyphs } from "./fonts";
-import { adjustColor, derivePalette, PALETTE_ROLES } from "./color";
+import { adjustColor, derivePalette } from "./color";
+import { applyPaletteToLayers } from "./paletteApply";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -194,8 +195,7 @@ export function runQuickEdit(style: StyleSpecification, raw: string): QuickEditR
     if (wantDark || wantLight) {
       const base = readRoleColor(layers, "background") || "#3b6fe2";
       const pal = derivePalette(base, wantDark);
-      let c = 0;
-      for (const role of PALETTE_ROLES) c += colorRole(layers, role as RoleKey, (pal as any)[role]);
+      const c = applyPaletteToLayers(layers, pal);
       return { style: next, summary: `Applied ${wantDark ? "dark" : "light"} theme to ${c} layer${c > 1 ? "s" : ""}.` };
     }
   }
