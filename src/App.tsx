@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import Toolbar from "./components/Toolbar";
@@ -10,28 +10,31 @@ import Toaster from "./components/Toaster";
 import BrandPanel from "./components/BrandPanel";
 import ConfigurePanel from "./components/ConfigurePanel";
 import { CodeIcon, ImageIcon, LayersIcon, PaletteIcon, SlidersIcon } from "./components/icons";
+import { useStyleDocument } from "./app/useStyleDocument";
+import { useHistory } from "./app/useHistory";
+import { useMediaQuery } from "./app/useMediaQuery";
+import { clearSavedStyle } from "./lib/persistence";
+import { checkLabelContrast } from "./lib/contrast";
 
 // Monaco is heavy and bundled locally — load the JSON editor on demand.
 const StyleEditor = lazy(() => import("./components/StyleEditor"));
-import { clearSavedStyle, loadSavedStyle, saveStyle } from "./lib/persistence";
-import { fetchStyleText } from "./lib/styleLoader";
-import { DEFAULT_STYLE_URL, FALLBACK_STYLE } from "./lib/defaultStyle";
-import { clearShareHash, readSharedStyle } from "./lib/share";
-import { checkLabelContrast } from "./lib/contrast";
 
-const FALLBACK_TEXT = JSON.stringify(FALLBACK_STYLE, null, 2);
-const HISTORY_MAX = 60;
+const SECTIONS = [
+  { id: "configure", label: "Setup", icon: <SlidersIcon /> },
+  { id: "layers", label: "Layers", icon: <LayersIcon /> },
+  { id: "palette", label: "Palette", icon: <PaletteIcon /> },
+  { id: "images", label: "Images", icon: <ImageIcon /> },
+  { id: "code", label: "Code", icon: <CodeIcon size={18} /> },
+] as const;
+type SectionId = (typeof SECTIONS)[number]["id"];
 
 export default function App() {
-  const [text, setText] = useState<string>("");
-  const [parsedStyle, setParsedStyle] = useState<StyleSpecification | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [section, setSection] = useState<"configure" | "layers" | "palette" | "images" | "code">(
-    () => (localStorage.getItem("map-style-editor:section") as never) || "configure",
+  const { text, parsedStyle, error, setText, setStyleObject, loadDefault } = useStyleDocument();
+  const { record, undo, redo, canUndo, canRedo } = useHistory(text, setText);
+  const vertical = useMediaQuery("(max-width: 820px)");
+  const [section, setSection] = useState<SectionId>(
+    () => (localStorage.getItem("map-style-editor:section") as SectionId) || "configure",
   );
-  const [past, setPast] = useState<string[]>([]);
-  const [future, setFuture] = useState<string[]>([]);
-  const [vertical, setVertical] = useState(() => window.innerWidth < 820);
 
   useEffect(() => {
     try {
@@ -41,125 +44,25 @@ export default function App() {
     }
   }, [section]);
 
-  const SECTIONS = [
-    { id: "configure", label: "Setup", icon: <SlidersIcon /> },
-    { id: "layers", label: "Layers", icon: <LayersIcon /> },
-    { id: "palette", label: "Palette", icon: <PaletteIcon /> },
-    { id: "images", label: "Images", icon: <ImageIcon /> },
-    { id: "code", label: "Code", icon: <CodeIcon size={18} /> },
-  ] as const;
+  /** Replace the whole text (template / import / share) with an undo step. */
+  function loadText(next: string) {
+    record();
+    setText(next);
+  }
 
-  // Stack editor/map vertically on narrow screens.
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 820px)");
-    const handler = () => setVertical(mq.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-
-  // Initial load: shared link (#s=) > saved work > default remote style > fallback.
-  useEffect(() => {
-    (async () => {
-      const shared = await readSharedStyle();
-      if (shared) {
-        setText(shared);
-        clearShareHash();
-        return;
-      }
-      const saved = loadSavedStyle();
-      if (saved) {
-        setText(saved);
-        return;
-      }
-      try {
-        setText(await fetchStyleText(DEFAULT_STYLE_URL));
-      } catch {
-        setText(FALLBACK_TEXT);
-      }
-    })();
-  }, []);
-
-  // Debounced parse: keep last valid style on the map, surface errors otherwise.
-  const timer = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    if (!text) return;
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      try {
-        const parsed = JSON.parse(text) as StyleSpecification;
-        setParsedStyle(parsed);
-        setError(null);
-        saveStyle(text);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Invalid JSON");
-      }
-    }, 300);
-    return () => window.clearTimeout(timer.current);
-  }, [text]);
-
-  /** Replace the style text and record an undo step. */
-  function loadText(newText: string) {
-    setPast((p) => [...p, text].slice(-HISTORY_MAX));
-    setFuture([]);
-    setText(newText);
+  /** Apply an edited style object (UI / quick edit / palette) with an undo step. */
+  function applyStyle(next: StyleSpecification) {
+    record();
+    setStyleObject(next);
   }
 
   function handleReset() {
+    record();
     clearSavedStyle();
-    fetchStyleText(DEFAULT_STYLE_URL).then(loadText).catch(() => loadText(FALLBACK_TEXT));
+    loadDefault();
   }
 
-  // UI / Images / quick-edit changes already produce a valid object, so update the
-  // parsed style immediately (no input lag) and record an undo step.
-  function handleStyleObjectChange(next: StyleSpecification) {
-    setPast((p) => [...p, text].slice(-HISTORY_MAX));
-    setFuture([]);
-    setParsedStyle(next);
-    setError(null);
-    setText(JSON.stringify(next, null, 2));
-  }
-
-  function undo() {
-    setPast((p) => {
-      if (!p.length) return p;
-      const prev = p[p.length - 1];
-      setFuture((f) => [text, ...f]);
-      setText(prev);
-      return p.slice(0, -1);
-    });
-  }
-
-  function redo() {
-    setFuture((f) => {
-      if (!f.length) return f;
-      const nxt = f[0];
-      setPast((p) => [...p, text]);
-      setText(nxt);
-      return f.slice(1);
-    });
-  }
-
-  // Keyboard undo/redo, but let Monaco / inputs handle their own when focused.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (!(e.ctrlKey || e.metaKey)) return;
-      const t = e.target as HTMLElement | null;
-      if (t?.closest(".monaco-editor, input, textarea, [contenteditable=true]")) return;
-      const key = e.key.toLowerCase();
-      if (key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-      } else if (key === "y" || (key === "z" && e.shiftKey)) {
-        e.preventDefault();
-        redo();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text, past, future]);
-
-  const contrast = checkLabelContrast(parsedStyle);
+  const contrastLow = !!checkLabelContrast(parsedStyle)?.low;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -169,12 +72,12 @@ export default function App() {
         onReset={handleReset}
         onUndo={undo}
         onRedo={redo}
-        canUndo={past.length > 0}
-        canRedo={future.length > 0}
+        canUndo={canUndo}
+        canRedo={canRedo}
         styleName={(parsedStyle as { name?: string } | null)?.name ?? ""}
-        onRename={(name) => parsedStyle && handleStyleObjectChange({ ...parsedStyle, name } as StyleSpecification)}
+        onRename={(name) => parsedStyle && applyStyle({ ...parsedStyle, name } as StyleSpecification)}
       />
-      <QuickEditBar style={parsedStyle} onChange={handleStyleObjectChange} contrastLow={!!contrast?.low} />
+      <QuickEditBar style={parsedStyle} onChange={applyStyle} contrastLow={contrastLow} />
       <div style={{ flex: 1, minHeight: 0 }}>
         <PanelGroup direction={vertical ? "vertical" : "horizontal"}>
           <Panel defaultSize={44} minSize={22}>
@@ -193,10 +96,10 @@ export default function App() {
                 ))}
               </nav>
               <div className="editor-panel">
-                {section === "configure" && <ConfigurePanel style={parsedStyle} onChange={handleStyleObjectChange} />}
-                {section === "layers" && <UiEditor style={parsedStyle} onChange={handleStyleObjectChange} />}
-                {section === "palette" && <BrandPanel style={parsedStyle} onChange={handleStyleObjectChange} />}
-                {section === "images" && <ImagesPanel style={parsedStyle} onChange={handleStyleObjectChange} />}
+                {section === "configure" && <ConfigurePanel style={parsedStyle} onChange={applyStyle} />}
+                {section === "layers" && <UiEditor style={parsedStyle} onChange={applyStyle} />}
+                {section === "palette" && <BrandPanel style={parsedStyle} onChange={applyStyle} />}
+                {section === "images" && <ImagesPanel style={parsedStyle} onChange={applyStyle} />}
                 {section === "code" && (
                   <Suspense fallback={<div className="empty-note">Loading editor…</div>}>
                     <StyleEditor value={text} onChange={setText} error={error} />
