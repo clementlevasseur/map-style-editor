@@ -15,6 +15,7 @@ import { useHistory } from "@/app/useHistory";
 import { useMediaQuery } from "@/app/useMediaQuery";
 import { clearSavedStyle } from "@/lib/persistence";
 import { checkLabelContrast } from "@/lib/contrast";
+import { toast } from "@/lib/toast";
 
 // Monaco is heavy and bundled locally — load the JSON editor on demand.
 const StyleEditor = lazy(() => import("@/features/code/StyleEditor"));
@@ -35,6 +36,14 @@ export default function App() {
   const [section, setSection] = useState<SectionId>(
     () => (localStorage.getItem("map-style-editor:section") as SectionId) || "configure",
   );
+  // A layer picked by clicking the map (n forces re-selection on repeat clicks).
+  const [pickedLayer, setPickedLayer] = useState<{ id: string; n: number } | null>(null);
+
+  function handlePickLayer(id: string) {
+    setSection("layers");
+    setPickedLayer((prev) => ({ id, n: (prev?.n ?? 0) + 1 }));
+    toast(`Selected layer “${id}”`);
+  }
 
   useEffect(() => {
     try {
@@ -97,7 +106,7 @@ export default function App() {
               </nav>
               <div className="editor-panel">
                 {section === "configure" && <ConfigurePanel style={parsedStyle} onChange={applyStyle} />}
-                {section === "layers" && <UiEditor style={parsedStyle} onChange={applyStyle} />}
+                {section === "layers" && <UiEditor style={parsedStyle} onChange={applyStyle} selectLayer={pickedLayer} />}
                 {section === "palette" && <BrandPanel style={parsedStyle} onChange={applyStyle} />}
                 {section === "images" && <ImagesPanel style={parsedStyle} onChange={applyStyle} />}
                 {section === "code" && (
@@ -110,7 +119,7 @@ export default function App() {
           </Panel>
           <PanelResizeHandle className={"resize-handle " + (vertical ? "resize-handle--h" : "resize-handle--v")} />
           <Panel minSize={20}>
-            <MapPreview style={parsedStyle} />
+            <MapPreview style={parsedStyle} onPickLayer={handlePickLayer} />
           </Panel>
         </PanelGroup>
       </div>

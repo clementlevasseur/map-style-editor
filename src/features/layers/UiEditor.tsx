@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
 import { layerTypes, layoutProps, paintProps, type PropDef } from "@/lib/specMeta";
 import { imageNames } from "@/lib/styleImages";
@@ -31,6 +31,8 @@ interface Props {
   style: StyleSpecification | null;
   /** Commit an edited style object back (the app re-serialises it to JSON). */
   onChange: (style: StyleSpecification) => void;
+  /** A layer to select (e.g. picked by clicking the map); `n` bumps on each pick. */
+  selectLayer?: { id: string; n: number } | null;
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -50,7 +52,7 @@ function typeColor(t: string): string {
   return TYPE_COLORS[t] ?? "#8a8f99";
 }
 
-export default function UiEditor({ style, onChange }: Props) {
+export default function UiEditor({ style, onChange, selectLayer }: Props) {
   const [selected, setSelected] = useState(0);
   const [filter, setFilter] = useState("");
   const [adding, setAdding] = useState(false);
@@ -82,6 +84,17 @@ export default function UiEditor({ style, onChange }: Props) {
     () => (Array.from(new Set(layers.map((l) => l["source-layer"]).filter(Boolean))) as string[]).sort(),
     [layers],
   );
+
+  // Select a layer picked from the map.
+  useEffect(() => {
+    if (!selectLayer) return;
+    const i = layers.findIndex((l) => l.id === selectLayer.id);
+    if (i >= 0) {
+      setSelected(i);
+      setFilter("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectLayer]);
 
   if (!style) {
     return (

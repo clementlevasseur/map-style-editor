@@ -9,6 +9,8 @@ registerMapProtocols();
 interface MapPreviewProps {
   /** Last valid parsed style. Applied live via setStyle({ diff: true }). */
   style: StyleSpecification | null;
+  /** Called with the style layer id of the topmost feature clicked on the map. */
+  onPickLayer?: (layerId: string) => void;
 }
 
 const PLACES: { name: string; center: [number, number]; zoom: number }[] = [
@@ -44,10 +46,16 @@ function saveView(v: ViewState): void {
   }
 }
 
-export default function MapPreview({ style }: MapPreviewProps) {
+export default function MapPreview({ style, onPickLayer }: MapPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [view, setView] = useState<ViewState>(() => loadView() ?? { lng: 2.35, lat: 48.85, zoom: 11 });
+
+  // Keep the latest callback for the once-registered click handler.
+  const pickRef = useRef<typeof onPickLayer>(onPickLayer);
+  useEffect(() => {
+    pickRef.current = onPickLayer;
+  }, [onPickLayer]);
 
   // Init map once.
   useEffect(() => {
@@ -69,6 +77,12 @@ export default function MapPreview({ style }: MapPreviewProps) {
       const c = map.getCenter();
       saveView({ lng: c.lng, lat: c.lat, zoom: map.getZoom() });
     });
+    // Click a feature → select the style layer that drew it.
+    map.on("click", (e) => {
+      const feats = map.queryRenderedFeatures(e.point);
+      if (feats.length) pickRef.current?.(feats[0].layer.id);
+    });
+    map.getCanvas().style.cursor = "default";
     mapRef.current = map;
 
     // Keep the canvas in sync with its container (panel drag, window resize…).
