@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl, { type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { registerMapProtocols } from "../lib/mapProtocols";
-import { hydrateMapImages } from "../lib/styleImages";
+import { registerMapProtocols } from "@/lib/mapProtocols";
+import { hydrateMapImages } from "@/lib/styleImages";
 
 registerMapProtocols();
 

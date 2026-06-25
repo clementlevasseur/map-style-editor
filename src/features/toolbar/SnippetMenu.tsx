@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
-import { SNIPPETS, STYLE_URL_PLACEHOLDER } from "../lib/snippets";
-import { CodeIcon } from "./icons";
-import { useDismiss } from "../lib/useDismiss";
+import { SNIPPETS, STYLE_URL_PLACEHOLDER } from "@/lib/snippets";
+import { CodeIcon } from "@/shared/icons";
+import { useDismiss } from "@/shared/useDismiss";
 
 export default function SnippetMenu() {
   const [open, setOpen] = useState(false);

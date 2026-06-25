@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
-import { runQuickEdit } from "../lib/quickEdit";
-import { useDismiss } from "../lib/useDismiss";
+import { runQuickEdit } from "@/lib/quickEdit";
+import { useDismiss } from "@/shared/useDismiss";
 
 interface Props {
   style: StyleSpecification | null;

@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
-import "../lib/monacoSetup";
+import "@/lib/monacoSetup";
 import Editor, { type Monaco } from "@monaco-editor/react";
 import type { editor as MonacoEditor } from "monaco-editor";
 import { validateStyleMin } from "@maplibre/maplibre-gl-style-spec";
-import { MAPLIBRE_STYLE_SCHEMA, STYLE_SPEC_VERSION } from "../lib/styleSchema";
+import { MAPLIBRE_STYLE_SCHEMA, STYLE_SPEC_VERSION } from "@/lib/styleSchema";
 
 interface StyleEditorProps {
   value: string;

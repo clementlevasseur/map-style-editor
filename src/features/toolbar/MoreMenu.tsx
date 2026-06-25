@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
-import { fetchStyleText, readFileText } from "../lib/styleLoader";
-import { toast } from "../lib/toast";
-import { useDismiss } from "../lib/useDismiss";
-import { GitHubIcon, MoreIcon } from "./icons";
+import { fetchStyleText, readFileText } from "@/lib/styleLoader";
+import { toast } from "@/lib/toast";
+import { useDismiss } from "@/shared/useDismiss";
+import { GitHubIcon, MoreIcon } from "@/shared/icons";
 
 const REPO_URL = "https://github.com/clementlevasseur/map-style-editor";
 

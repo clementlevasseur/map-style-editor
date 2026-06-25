@@ -1,16 +1,16 @@
 import { useState } from "react";
-import { downloadStyle } from "../lib/styleLoader";
-import { TEMPLATES, templatesByGroup } from "../lib/templates";
-import { getImages, getSpriteUrl } from "../lib/styleImages";
-import { buildSprite, downloadBlob } from "../lib/sprite";
-import { createZip } from "../lib/zip";
-import { buildShareUrl } from "../lib/share";
-import { toast } from "../lib/toast";
-import Logo from "./Logo";
+import { downloadStyle } from "@/lib/styleLoader";
+import { TEMPLATES, templatesByGroup } from "@/lib/templates";
+import { getImages, getSpriteUrl } from "@/lib/styleImages";
+import { buildSprite, downloadBlob } from "@/lib/sprite";
+import { createZip } from "@/lib/zip";
+import { buildShareUrl } from "@/lib/share";
+import { toast } from "@/lib/toast";
+import Logo from "@/shared/Logo";
 import SavedMenu from "./SavedMenu";
 import SnippetMenu from "./SnippetMenu";
 import MoreMenu from "./MoreMenu";
-import { RedoIcon, ShareIcon, UndoIcon } from "./icons";
+import { RedoIcon, ShareIcon, UndoIcon } from "@/shared/icons";
 
 interface ToolbarProps {
   onLoad: (text: string) => void;
@@ -36,7 +36,7 @@ export default function Toolbar({ onLoad, currentText, onReset, onUndo, onRedo, 
       return;
     }
     setBusy(true);
-    import("../lib/styleLoader")
+    import("@/lib/styleLoader")
       .then(({ fetchStyleText }) => fetchStyleText(tpl.url!))
       .then(onLoad)
       .catch((err) => toast(`Failed to load the template: ${err instanceof Error ? err.message : err}`, "error"))

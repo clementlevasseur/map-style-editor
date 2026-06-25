@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { deleteSaved, listSaved, saveStyleNamed, type SavedStyle } from "../lib/savedStyles";
-import { useDismiss } from "../lib/useDismiss";
+import { deleteSaved, listSaved, saveStyleNamed, type SavedStyle } from "@/lib/savedStyles";
+import { useDismiss } from "@/shared/useDismiss";
 
 interface Props {
   currentText: string;

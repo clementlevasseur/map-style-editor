@@ -7,10 +7,10 @@ import {
   PALETTE_ROLES,
   readPalette,
   type Palette,
-} from "../lib/palette";
-import type { Scheme } from "../lib/color";
-import { dominantColor } from "../lib/imagePalette";
-import { toast } from "../lib/toast";
+} from "@/lib/palette";
+import type { Scheme } from "@/lib/color";
+import { dominantColor } from "@/lib/imagePalette";
+import { toast } from "@/lib/toast";
 
 interface Props {
   style: StyleSpecification | null;

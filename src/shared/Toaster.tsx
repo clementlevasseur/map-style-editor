@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { onToast, type Toast } from "../lib/toast";
+import { onToast, type Toast } from "@/lib/toast";
 
 export default function Toaster() {
   const [items, setItems] = useState<Toast[]>([]);

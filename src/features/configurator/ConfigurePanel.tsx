@@ -7,9 +7,9 @@ import {
   categoryStats,
   PRESETS,
   toggleCategory,
-} from "../lib/categories";
-import { applyPalette, derivePalette } from "../lib/palette";
-import { runQuickEdit } from "../lib/quickEdit";
+} from "@/lib/categories";
+import { applyPalette, derivePalette } from "@/lib/palette";
+import { runQuickEdit } from "@/lib/quickEdit";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 

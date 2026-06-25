@@ -8,8 +8,8 @@ import {
   setImage,
   setSpriteUrl,
   type EditorImage,
-} from "../lib/styleImages";
-import { toast } from "../lib/toast";
+} from "@/lib/styleImages";
+import { toast } from "@/lib/toast";
 
 interface Props {
   style: StyleSpecification | null;

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { PropDef } from "../lib/specMeta";
-import { FONT_PROPS } from "../lib/fonts";
-import { ExternalLinkIcon, InfoIcon } from "./icons";
+import type { PropDef } from "@/lib/specMeta";
+import { FONT_PROPS } from "@/lib/fonts";
+import { ExternalLinkIcon, InfoIcon } from "@/shared/icons";
 
 interface Props {
   def: PropDef;

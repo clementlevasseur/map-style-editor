@@ -1,23 +1,23 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import Toolbar from "./components/Toolbar";
-import UiEditor from "./components/UiEditor";
-import ImagesPanel from "./components/ImagesPanel";
-import MapPreview from "./components/MapPreview";
-import QuickEditBar from "./components/QuickEditBar";
-import Toaster from "./components/Toaster";
-import BrandPanel from "./components/BrandPanel";
-import ConfigurePanel from "./components/ConfigurePanel";
-import { CodeIcon, ImageIcon, LayersIcon, PaletteIcon, SlidersIcon } from "./components/icons";
-import { useStyleDocument } from "./app/useStyleDocument";
-import { useHistory } from "./app/useHistory";
-import { useMediaQuery } from "./app/useMediaQuery";
-import { clearSavedStyle } from "./lib/persistence";
-import { checkLabelContrast } from "./lib/contrast";
+import Toolbar from "@/features/toolbar/Toolbar";
+import UiEditor from "@/features/layers/UiEditor";
+import ImagesPanel from "@/features/images/ImagesPanel";
+import MapPreview from "@/features/map/MapPreview";
+import QuickEditBar from "@/features/quick-edit/QuickEditBar";
+import BrandPanel from "@/features/palette/BrandPanel";
+import ConfigurePanel from "@/features/configurator/ConfigurePanel";
+import Toaster from "@/shared/Toaster";
+import { CodeIcon, ImageIcon, LayersIcon, PaletteIcon, SlidersIcon } from "@/shared/icons";
+import { useStyleDocument } from "@/app/useStyleDocument";
+import { useHistory } from "@/app/useHistory";
+import { useMediaQuery } from "@/app/useMediaQuery";
+import { clearSavedStyle } from "@/lib/persistence";
+import { checkLabelContrast } from "@/lib/contrast";
 
 // Monaco is heavy and bundled locally — load the JSON editor on demand.
-const StyleEditor = lazy(() => import("./components/StyleEditor"));
+const StyleEditor = lazy(() => import("@/features/code/StyleEditor"));
 
 const SECTIONS = [
   { id: "configure", label: "Setup", icon: <SlidersIcon /> },

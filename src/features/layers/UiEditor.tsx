@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
-import { layerTypes, layoutProps, paintProps, type PropDef } from "../lib/specMeta";
-import { imageNames } from "../lib/styleImages";
-import { FONTS, GLYPHS_URL, shouldSwitchGlyphs } from "../lib/fonts";
-import { useDismiss } from "../lib/useDismiss";
+import { layerTypes, layoutProps, paintProps, type PropDef } from "@/lib/specMeta";
+import { imageNames } from "@/lib/styleImages";
+import { FONTS, GLYPHS_URL, shouldSwitchGlyphs } from "@/lib/fonts";
+import { useDismiss } from "@/shared/useDismiss";
 import PropertyControl from "./PropertyControl";
-import { ExternalLinkIcon, EyeIcon, EyeOffIcon, InfoIcon } from "./icons";
+import { ExternalLinkIcon, EyeIcon, EyeOffIcon, InfoIcon } from "@/shared/icons";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function defaultPaint(type: string): Record<string, unknown> {
