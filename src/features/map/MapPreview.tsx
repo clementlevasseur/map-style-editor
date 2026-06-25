@@ -50,6 +50,16 @@ export default function MapPreview({ style, onPickLayer }: MapPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [view, setView] = useState<ViewState>(() => loadView() ?? { lng: 2.35, lat: 48.85, zoom: 11 });
+  const [hint, setHint] = useState(() => localStorage.getItem("map-style-editor:hint") !== "off");
+
+  function dismissHint() {
+    setHint(false);
+    try {
+      localStorage.setItem("map-style-editor:hint", "off");
+    } catch {
+      /* ignore */
+    }
+  }
 
   // Keep the latest callback for the once-registered click handler.
   const pickRef = useRef<typeof onPickLayer>(onPickLayer);
@@ -154,6 +164,14 @@ export default function MapPreview({ style, onPickLayer }: MapPreviewProps) {
           </option>
         ))}
       </select>
+      {hint && (
+        <div className="map-hint">
+          <span>💡 Click a feature on the map to jump to its layer</span>
+          <button className="map-hint__x" title="Dismiss" onClick={dismissHint}>
+            ✕
+          </button>
+        </div>
+      )}
       <div className="map-coords">
         {view.lat.toFixed(4)}, {view.lng.toFixed(4)} · z{view.zoom.toFixed(2)}
       </div>

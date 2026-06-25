@@ -1007,6 +1007,36 @@ button {
   height: 100%;
   width: 100%;
 }
+.map-hint {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(12, 14, 18, 0.78);
+  color: #eef1f6;
+  padding: 6px 8px 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(3px);
+}
+.map-hint__x {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 50%;
+}
+.map-hint__x:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .map-coords {
   position: absolute;
   bottom: 10px;
