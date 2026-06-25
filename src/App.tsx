@@ -108,8 +108,8 @@ export default function App() {
       />
       <QuickEditBar style={parsedStyle} onChange={applyStyle} contrastLow={contrastLow} />
       <div style={{ flex: 1, minHeight: 0 }}>
-        <PanelGroup direction={vertical ? "vertical" : "horizontal"}>
-          <Panel defaultSize={44} minSize={22}>
+        <PanelGroup direction={vertical ? "vertical" : "horizontal"} autoSaveId={vertical ? "mse-split-v" : "mse-split-h"}>
+          <Panel defaultSize={vertical ? 42 : 36} minSize={20}>
             <div className="editor-pane">
               <nav className="rail">
                 {SECTIONS.map((s) => (
