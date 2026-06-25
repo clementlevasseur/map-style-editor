@@ -166,7 +166,7 @@ export default function MapPreview({ style, onPickLayer }: MapPreviewProps) {
       </select>
       {hint && (
         <div className="map-hint">
-          <span>💡 Click a feature on the map to jump to its layer</span>
+          <span>Click a feature on the map to jump to its layer</span>
           <button className="map-hint__x" title="Dismiss" onClick={dismissHint}>
             ✕
           </button>
