@@ -23,7 +23,7 @@ const EXAMPLES: { group: string; items: string[] }[] = [
   },
   {
     group: "Size & more",
-    items: ["roads width 2", "water opacity 0.6", "labels size 14", "hide buildings", "darken water"],
+    items: ["roads width 2", "roads minzoom 4", "water opacity 0.6", "labels size 14", "hide buildings"],
   },
   {
     group: "Labels",

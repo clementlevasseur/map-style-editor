@@ -171,6 +171,20 @@ export function runQuickEdit(style: StyleSpecification, raw: string): QuickEditR
     return { style: next, summary: `Set ${role} opacity to ${v} on ${c} layer${c > 1 ? "s" : ""}.` };
   }
 
+  // ZOOM RANGE — show a role earlier/later (e.g. roads at country scale)
+  if (/\b(minzoom|maxzoom|min zoom|max zoom)\b/.test(cmd) && num !== undefined) {
+    if (!role) return { error: 'Which target? e.g. "roads minzoom 4".' };
+    const isMax = /max/.test(cmd);
+    let c = 0;
+    for (const l of layers) {
+      if (!matchLayer(role, l)) continue;
+      l[isMax ? "maxzoom" : "minzoom"] = num;
+      c++;
+    }
+    if (!c) return { error: `No "${role}" layers found.` };
+    return { style: next, summary: `Set ${role} ${isMax ? "maxzoom" : "minzoom"} to ${num} on ${c} layer${c > 1 ? "s" : ""}.` };
+  }
+
   // WIDTH (line layers)
   if (/\b(width|[eé]paisseur|thick|thin)\b/.test(cmd) && num !== undefined) {
     const r = role ?? "roads";

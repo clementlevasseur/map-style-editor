@@ -44,6 +44,11 @@ describe("runQuickEdit", () => {
     expect(layer(r.style, "road").paint["line-width"]).toBe(4);
   });
 
+  it("sets minzoom on a role", () => {
+    const r = runQuickEdit(style(), "roads minzoom 4");
+    expect(layer(r.style, "road").minzoom).toBe(4);
+  });
+
   it("applies a dark theme", () => {
     const r = runQuickEdit(style(), "theme dark");
     const bg = layer(r.style, "bg").paint["background-color"] as string;
