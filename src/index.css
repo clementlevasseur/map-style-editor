@@ -535,6 +535,13 @@ button {
   background: #343a45;
   color: var(--text);
 }
+.seg__btn--active {
+  background: var(--accent);
+  color: #fff;
+}
+.addlayer__seg {
+  margin-bottom: 4px;
+}
 .cat-list {
   display: flex;
   flex-direction: column;

@@ -4,6 +4,8 @@ import { layerTypes, layoutProps, paintProps, type PropDef } from "@/lib/specMet
 import { imageNames } from "@/lib/styleImages";
 import { FONTS, GLYPHS_URL, shouldSwitchGlyphs } from "@/lib/fonts";
 import { useDismiss } from "@/shared/useDismiss";
+import { GEOJSON_STARTERS, type GeoStarter } from "@/lib/geojsonStarters";
+import { toast } from "@/lib/toast";
 import PropertyControl from "./PropertyControl";
 import { ExternalLinkIcon, EyeIcon, EyeOffIcon, InfoIcon } from "@/shared/icons";
 
@@ -66,6 +68,9 @@ export default function UiEditor({ style, onChange, selectLayer, inspect }: Prop
   const [filter, setFilter] = useState("");
   const [adding, setAdding] = useState(false);
   const [nl, setNl] = useState({ type: "fill", source: "", sourceLayer: "" });
+  const [nlMode, setNlMode] = useState<"vector" | "geojson">("vector");
+  const [geoUrl, setGeoUrl] = useState("");
+  const geoFileRef = useRef<HTMLInputElement>(null);
   const addRef = useRef<HTMLDivElement>(null);
   useDismiss(addRef, adding, () => setAdding(false));
 
@@ -191,7 +196,48 @@ export default function UiEditor({ style, onChange, selectLayer, inspect }: Prop
 
   function openAdd() {
     setNl({ type: "fill", source: defaultSource(), sourceLayer: "" });
+    setNlMode("vector");
+    setGeoUrl("");
     setAdding(true);
+  }
+
+  function uniqueSourceId(base: string): string {
+    const ex = new Set(Object.keys((style as any).sources ?? {}));
+    if (!ex.has(base)) return base;
+    let n = 1;
+    while (ex.has(`${base}-${n}`)) n++;
+    return `${base}-${n}`;
+  }
+
+  // Add a GeoJSON dataset (URL or inline object) as a source + a layer to style.
+  // GeoJSON renders at any zoom — handy for data the vector tiles drop when zoomed out.
+  function addGeoData(data: string | object, type: "fill" | "line" | "circle", name = "data") {
+    commit((s) => {
+      const sid = uniqueSourceId(name);
+      (s as any).sources = { ...((s as any).sources ?? {}), [sid]: { type: "geojson", data } };
+      const paint =
+        type === "fill" ? { "fill-color": "#e0457b", "fill-opacity": 0.4 }
+        : type === "circle" ? { "circle-color": "#e0457b", "circle-radius": 4 }
+        : { "line-color": "#e0457b", "line-width": 2 };
+      (s.layers as any[]).push({ id: uniqueId(`${name}-${type}`), type, source: sid, paint });
+    });
+    setSelected(layers.length);
+    setAdding(false);
+  }
+
+  function addStarter(g: GeoStarter) {
+    addGeoData(g.url, g.type, g.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""));
+  }
+
+  async function onGeoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      addGeoData(JSON.parse(await file.text()), "line", file.name.replace(/\.[^.]+$/, "") || "data");
+    } catch {
+      toast("That file isn't valid GeoJSON.", "error");
+    }
   }
 
   function createLayer() {
@@ -293,54 +339,111 @@ export default function UiEditor({ style, onChange, selectLayer, inspect }: Prop
           </button>
           {adding && (
             <div className="addlayer">
-              <div className="addlayer__row">
-                <label>Type</label>
-                <select className="select" value={nl.type} onChange={(e) => setNl((v) => ({ ...v, type: e.target.value }))}>
-                  {layerTypes().map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+              <div className="seg addlayer__seg">
+                <button className={"seg__btn" + (nlMode === "vector" ? " seg__btn--active" : "")} onClick={() => setNlMode("vector")}>
+                  Vector source
+                </button>
+                <button className={"seg__btn" + (nlMode === "geojson" ? " seg__btn--active" : "")} onClick={() => setNlMode("geojson")}>
+                  GeoJSON
+                </button>
               </div>
-              {nl.type !== "background" && (
+
+              {nlMode === "vector" ? (
                 <>
                   <div className="addlayer__row">
-                    <label>Source</label>
-                    <select className="select" value={nl.source} onChange={(e) => setNl((v) => ({ ...v, source: e.target.value }))}>
-                      <option value="">(none)</option>
-                      {sourceNames.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
+                    <label>Type</label>
+                    <select className="select" value={nl.type} onChange={(e) => setNl((v) => ({ ...v, type: e.target.value }))}>
+                      {layerTypes().map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {nl.type !== "background" && (
+                    <>
+                      <div className="addlayer__row">
+                        <label>Source</label>
+                        <select className="select" value={nl.source} onChange={(e) => setNl((v) => ({ ...v, source: e.target.value }))}>
+                          <option value="">(none)</option>
+                          {sourceNames.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="addlayer__row">
+                        <label>Source layer</label>
+                        <select
+                          className="select"
+                          value={nl.sourceLayer}
+                          onChange={(e) => setNl((v) => ({ ...v, sourceLayer: e.target.value }))}
+                        >
+                          <option value="">(choose…)</option>
+                          {usedSourceLayers.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  )}
+                  <div className="addlayer__actions">
+                    <button className="btn btn--primary" onClick={createLayer}>
+                      Add layer
+                    </button>
+                    <button className="btn" onClick={() => setAdding(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="addlayer__row">
+                    <label>Starter</label>
+                    <select
+                      className="select"
+                      value=""
+                      onChange={(e) => {
+                        const g = GEOJSON_STARTERS.find((x) => x.label === e.target.value);
+                        if (g) addStarter(g);
+                      }}
+                    >
+                      <option value="">Pick a dataset…</option>
+                      {GEOJSON_STARTERS.map((g) => (
+                        <option key={g.label} value={g.label}>
+                          {g.label}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div className="addlayer__row">
-                    <label>Source layer</label>
-                    <select
-                      className="select"
-                      value={nl.sourceLayer}
-                      onChange={(e) => setNl((v) => ({ ...v, sourceLayer: e.target.value }))}
-                    >
-                      <option value="">(choose…)</option>
-                      {usedSourceLayers.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
+                    <label>URL</label>
+                    <input
+                      className="input"
+                      placeholder="https://…/data.geojson"
+                      value={geoUrl}
+                      onChange={(e) => setGeoUrl(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && geoUrl.trim() && addGeoData(geoUrl.trim(), "line")}
+                    />
+                  </div>
+                  <div className="qh-note">Renders at any zoom. Added as a line layer — change the type after.</div>
+                  <input ref={geoFileRef} type="file" accept=".geojson,application/geo+json,application/json" style={{ display: "none" }} onChange={onGeoFile} />
+                  <div className="addlayer__actions">
+                    <button className="btn btn--primary" onClick={() => geoUrl.trim() && addGeoData(geoUrl.trim(), "line")} disabled={!geoUrl.trim()}>
+                      Add from URL
+                    </button>
+                    <button className="btn" onClick={() => geoFileRef.current?.click()}>
+                      Upload file…
+                    </button>
+                    <button className="btn" onClick={() => setAdding(false)}>
+                      Cancel
+                    </button>
                   </div>
                 </>
               )}
-              <div className="addlayer__actions">
-                <button className="btn btn--primary" onClick={createLayer}>
-                  Add layer
-                </button>
-                <button className="btn" onClick={() => setAdding(false)}>
-                  Cancel
-                </button>
-              </div>
             </div>
           )}
         </div>
