@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { StyleSpecification } from "maplibre-gl";
 import {
   applyPalette,
@@ -31,17 +31,40 @@ export default function BrandPanel({ style, onChange }: Props) {
   const [base, setBase] = useState("#3b6fe2");
   const [dark, setDark] = useState(false);
   const [scheme, setScheme] = useState<Scheme>("mono");
-  const [msg, setMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Apply onto the freshest style, and debounce continuous edits (picker drag).
+  const styleRef = useRef(style);
+  useEffect(() => {
+    styleRef.current = style;
+  }, [style]);
+  const timer = useRef<number | undefined>(undefined);
 
   if (!style) {
     return <div className="empty-note">Fix the JSON first to apply a palette.</div>;
   }
 
+  function recolor(next: Palette) {
+    if (styleRef.current) onChange(applyPalette(styleRef.current, next).style);
+  }
+
+  /** Continuous edit (swatch/hex): update the panel now, recolor shortly after. */
+  function liveEdit(next: Palette) {
+    setPal(next);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => recolor(next), 150);
+  }
+
+  /** Discrete action (Generate / image): update and recolor immediately. */
+  function setAndRecolor(next: Palette) {
+    window.clearTimeout(timer.current);
+    setPal(next);
+    recolor(next);
+  }
+
   function generate(from = base) {
     setBase(from);
-    setPal(derivePalette(from, dark, scheme));
-    setMsg(null);
+    setAndRecolor(derivePalette(from, dark, scheme));
   }
 
   async function fromImage(e: React.ChangeEvent<HTMLInputElement>) {
@@ -57,24 +80,18 @@ export default function BrandPanel({ style, onChange }: Props) {
     }
   }
 
-  function apply() {
-    const r = applyPalette(style!, pal);
-    onChange(r.style);
-    setMsg(r.summary);
-  }
-
   return (
     <div className="brand-panel">
       <div className="qh-note">
-        Generate a coherent palette from a color, an image, or your site's brand — then{" "}
-        <strong>Recolor map</strong>.
+        Edit any color and the map recolors live. Generate a coherent palette from a color, an image
+        or your brand.
       </div>
 
       <div className="brand-base">
         <span className="qh-key">Base color</span>
         <input type="color" className="swatch" value={base} onChange={(e) => setBase(e.target.value)} />
         <input className="input" style={{ width: 100 }} value={base} onChange={(e) => setBase(e.target.value)} />
-        <button className="btn" onClick={() => generate()}>
+        <button className="btn btn--primary" onClick={() => generate()}>
           Generate
         </button>
         <button className="btn" onClick={() => fileRef.current?.click()}>
@@ -105,22 +122,15 @@ export default function BrandPanel({ style, onChange }: Props) {
               type="color"
               className="swatch"
               value={/^#[0-9a-fA-F]{6}$/.test(pal[role]) ? pal[role] : "#000000"}
-              onChange={(e) => { setPal((p) => ({ ...p, [role]: e.target.value })); setMsg(null); }}
+              onChange={(e) => liveEdit({ ...pal, [role]: e.target.value })}
             />
             <input
               className="input"
               value={pal[role]}
-              onChange={(e) => { setPal((p) => ({ ...p, [role]: e.target.value })); setMsg(null); }}
+              onChange={(e) => liveEdit({ ...pal, [role]: e.target.value })}
             />
           </div>
         ))}
-      </div>
-
-      <div className="brand-actions">
-        <button className="btn btn--primary" onClick={apply}>
-          Recolor map
-        </button>
-        {msg && <span className="quickedit__msg ok">{msg}</span>}
       </div>
     </div>
   );
