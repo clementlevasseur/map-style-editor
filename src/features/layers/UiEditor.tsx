@@ -26,6 +26,19 @@ function defaultLayout(type: string): Record<string, unknown> | undefined {
   return undefined;
 }
 
+// Pick the layer type matching a GeoJSON's dominant geometry.
+function detectGeometryType(gj: any): "fill" | "line" | "circle" {
+  const feats = gj?.type === "FeatureCollection" ? gj.features : gj?.type === "Feature" ? [gj] : [];
+  const counts = { fill: 0, line: 0, circle: 0 };
+  for (const f of feats ?? []) {
+    const t = String(f?.geometry?.type ?? "");
+    if (t.includes("Polygon")) counts.fill++;
+    else if (t.includes("LineString")) counts.line++;
+    else if (t.includes("Point")) counts.circle++;
+  }
+  return (["line", "fill", "circle"] as const).reduce((a, b) => (counts[b] > counts[a] ? b : a), "line");
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 interface Props {
@@ -234,7 +247,8 @@ export default function UiEditor({ style, onChange, selectLayer, inspect }: Prop
     e.target.value = "";
     if (!file) return;
     try {
-      addGeoData(JSON.parse(await file.text()), "line", file.name.replace(/\.[^.]+$/, "") || "data");
+      const gj = JSON.parse(await file.text());
+      addGeoData(gj, detectGeometryType(gj), file.name.replace(/\.[^.]+$/, "") || "data");
     } catch {
       toast("That file isn't valid GeoJSON.", "error");
     }
